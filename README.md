@@ -6,6 +6,7 @@
 
 1. Installation
 * I recommend using uv (<https://docs.astral.sh/uv/getting-started/installation/>)
+* Install Git LFS (for test_data)
 
 2. Packages
 * polars for DataFrames
@@ -14,6 +15,10 @@
 * PyBIDS for managing BIDS databases
 * Zarr Arrays to store arrays on-disk
 * See uv.lock or project.toml for requirements
+
+3. Git worklow
+* Start a branch to work on your feature
+* When the code is ready: push the branch and go on GitHub to open a pull request
 
 # Resources
 
