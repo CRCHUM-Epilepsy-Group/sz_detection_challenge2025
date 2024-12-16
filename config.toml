@@ -1,0 +1,21 @@
+
+[project]
+sz_detection_challenge
+
+[datasets]
+# Paths to BIDS datasets
+tuh_sz_bids = ""
+chb_mit_bids = ""
+siena_bids = ""
+
+
+[labels]
+labels_file = "data/cleaned/labels.parquet"
+
+[features]
+features_config = "features_config.yaml"
+feature_db_file = "data/cleaned/features.db"
+num_workers = 40
+
+[runtime]
+debug = True
