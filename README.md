@@ -6,7 +6,27 @@
 
 1. Installation
 * I recommend using uv (<https://docs.astral.sh/uv/getting-started/installation/>)
+
+``` sh
+wget -qO- https://astral.sh/uv/install.sh | sh
+uv sync --frozen
+```
 * Install Git LFS (for test_data)
+* Install epileptology
+
+``` sh
+# cd to a dedicated local directory, e.g.:
+cd ../epileptology
+git clone https://github.com/CRCHUM-Epilepsy-Group/epileptology/tree/main .
+uv build
+# cd back to your local project directory, e.g.:
+cd ../sz_detection_challenge2025
+# Install the epileptology package using uv
+ UV_FIND_LINKS=/path/to/epileptology/dist
+ # In my case: UV_FIND_LINKS=/Users/emilelemoine/software/epileptology/dist
+ uv sync
+```
+
 
 2. Packages
 * polars for DataFrames
