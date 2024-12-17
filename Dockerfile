@@ -4,6 +4,17 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.9 /uv /uvx /bin/
 COPY . /app
 WORKDIR /app
 
+# Create a non-privileged user that the app will run under.
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    appuser
+
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
 
@@ -22,8 +33,19 @@ ADD . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
+# Switch to the non-privileged user to run the application.
+USER appuser
+
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Explicitly mention volumes
+VOLUME ["/data"]
+VOLUME ["/output"]
+
+# Explicitely define environment variables
+ENV INPUT=""
+ENV OUTPUT=""
 
 # Run the pipeline (to change later!)
 CMD ["uv", "--help"]
