@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+    image: sz_detection:latest
+    container_name: sz_CRCHUM
+    environment:
+      - INPUT=""
+      - OUTPUT=""
+    volumes:
+      - ./data:/data
+      - ./output:/output
