@@ -24,17 +24,17 @@ def feature_extraction_pipeline(
         eeg = pp.read_edf(path, **preprocessing_kwargs["read_edf"])
         eeg = pp.filter_eeg(eeg, **preprocessing_kwargs["filter_eeg"])
         eeg = segmenting_function(eeg, **preprocessing_kwargs["segment_eeg"])
-        # cleaned_eeg = pp.clean_eeg(
-        #     eeg_seg, **preprocessing_kwargs["artifact_correction"]
-        # )
         extractor = FeatureExtractor(features, frameworks)
         features = extractor.extract_feature(eeg)
 
+        subject = parse_file_entities(path)["subject"]
         session = parse_file_entities(path)["session"]
-        dataset = parse_file_entities(path)
+        unique_session_id = f"{subject}_{session}"
 
         features = features.with_columns(
-            session=pl.lit(session),
+            session=pl.lit(unique_session_id),
+            session_bids=pl.lit(session),
+            subject=pl.lit(subject),
             dataset=pl.lit(dataset_name),
         )
 
