@@ -10,5 +10,6 @@ dependencies = [
     "polars>=1.17.1",
     "pytest>=8.3.4",
     "zarr>=2.18.4",
-    "epileptology"
+    "epileptology",
+    "pybids>=0.18.1",
 ]

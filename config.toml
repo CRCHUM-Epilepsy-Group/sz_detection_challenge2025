@@ -1,12 +1,14 @@
 
 [project]
-sz_detection_challenge
+name = "sz_detection_challenge"
+
 
 [datasets]
 # Paths to BIDS datasets
-tuh_sz_bids = ""
-chb_mit_bids = ""
-siena_bids = ""
+data_dir = "I:/Chercheurs/BouAssi_Elie/Data/SeizureDetectionChallenge2025/"
+tuh_sz_bids = "BIDS_tuh_eeg_seizure"
+chb_mit_bids = "BIDS_CHB-MIT"
+siena_bids = "BIDS_Siena"
 
 
 [labels]
@@ -18,4 +20,4 @@ feature_db_file = "data/cleaned/features.db"
 num_workers = 40
 
 [runtime]
-debug = True
+debug = true

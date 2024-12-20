@@ -1,2 +1,7 @@
 .DS_Store
 /src/sz_detection_challenge2025.egg-info/
+/.venv/
+/Sz_venv/
+/tests/notebooks/
+/tests/read_data.py
+.gitignore
