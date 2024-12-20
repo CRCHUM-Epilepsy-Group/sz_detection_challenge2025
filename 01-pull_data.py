@@ -98,15 +98,14 @@ def get_bids_file_paths(bids_dir, extension, subject=None, session=None, run=Non
 
 
 
-#def main():
-if True: 
+def main():
     # Load BIDS dataset
     with open(".\config.toml", "rb") as f:
         config = tomllib.load(f)
 
-    data_dir = config['datasets']['data_dir']
+    
     # bids datasets : tuh_sz_bids or chb_mit_bids or siena_bids
-    bids_directory = data_dir +  config['datasets']['siena_bids'] 
+    bids_directory = config['datasets']['siena_bids'] 
     
     sub = '03'
     sess = '01'
@@ -137,5 +136,5 @@ if True:
     else:
         print("No EEG or annotation files found.")
 
-#if __name__ == '__main__':
-#    main()
+if __name__ == '__main__':
+    main()
