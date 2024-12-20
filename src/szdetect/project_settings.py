@@ -4,11 +4,13 @@ from epileptology.features.featureextraction import FeatureExtractor
 import epileptology.preprocessing as pp
 from pathlib import Path
 from epileptology.utils.parsers import parse_config, parse_featureextraction_config
+import tomllib
 
-config = parse_config("proj_config.yaml")
+with open("config.toml", "rb") as f:
+    config = tomllib.load(f)
 
 # Overall settings
-PROJECT = config["project"]
+PROJECT = config["project"]["name"]
 
 # Datasets
 TUH_SZ_BIDS = Path(config["datasets"]["tuh_sz_bids"])
@@ -18,9 +20,9 @@ BIDS_DATASETS = {k: Path(v) for k, v in config["datasets"].items()}
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
-FEATURES, FRAMEWORKS = parse_featureextraction_config(
-    config["features"]["features_config"]
-)
+# FEATURES, FRAMEWORKS = parse_featureextraction_config(
+#     config["features"]["features_config"]
+# )
 NUM_WORKERS = config["features"]["num_workers"]
 
 PREPROCESSING_KWARGS = {

@@ -1,21 +1,20 @@
 
 [project]
-sz_detection_challenge
+name = 'sz_detection_challenge'
 
 [datasets]
 # Paths to BIDS datasets
-tuh_sz_bids = ""
-chb_mit_bids = ""
-siena_bids = ""
-
+tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
+chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
+siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
 
 [labels]
 labels_file = "data/cleaned/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
-feature_db_file = "data/cleaned/features.db"
-num_workers = 40
+features_db_file = "data/cleaned/features.db"
+num_workers = 4
 
 [runtime]
-debug = True
+debug = true
