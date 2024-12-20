@@ -13,3 +13,6 @@ dependencies = [
     "epileptology",
     "pybids>=0.18.1",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/szdetect"]
