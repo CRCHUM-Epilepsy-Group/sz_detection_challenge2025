@@ -17,4 +17,8 @@ features_db_file = "data/cleaned/features.db"
 num_workers = 4
 
 [runtime]
-debug = true
+debug = true¸
+
+[output]
+# Preliminary path to store output files
+out_dir = "/mnt/data/SeizureDetectionChallenge2025/output"
