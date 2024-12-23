@@ -18,6 +18,12 @@ def test_node_strength(CM):
     #print(strg)
     return strg
 
+def test_clustering_coef(CM):
+    assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"   
+    ccoef = connectivity.clustering_coef(CM) 
+    #print(ccoef)
+    return ccoef
+
 ndeg_list = [test_node_degree(m) for m in CM] 
 print(f"Length of ndeg_list: {len(ndeg_list)}")
 print(f"Type of items in list: {type(ndeg_list[0])}")
@@ -30,3 +36,8 @@ strg_list = [test_node_strength(m) for m in CM]
 print(f"Length of strg_list: {len(strg_list)}")
 print(f"Type of items in list: {type(strg_list[0])}")
 print(f"Shape of items in list: {strg_list[0].shape}")
+
+ccoef_list = [test_clustering_coef(m) for m in CM] 
+print(f"Length of ccoef_list: {len(ccoef_list)}")
+print(f"Type of items in list: {type(ccoef_list[0])}")
+print(f"Shape of items in list: {ccoef_list[0].shape}")

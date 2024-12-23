@@ -36,3 +36,24 @@ def node_strength(CM: np.ndarray) -> np.ndarray:
     """
     strg = np.sum(CM, axis=0)
     return strg
+
+def clustering_coef(CM: np.ndarray) -> np.ndarray:
+    """
+    Computes weighted clustering coefficient from weighted undirected connectivity matrix.
+    The clustering coefficient is the average intensity of triangles around a node
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, undirected weighted connectivity matrix
+
+    Returns:
+    ---------------
+    ccoef: Nx1 np.ndarray, clustering coefficients
+
+    """
+    d = np.array(np.sum(np.logical_not(CM == 0), axis=1), dtype=float) # computes node degree
+    cube_root = np.sign(CM) * np.abs(CM)**(1 / 3) # handles negative weights
+    cycles3 = np.diag(np.dot(cube_root, np.dot(cube_root, cube_root)))
+    d[np.where(cycles3 == 0)] = np.inf  # set coef to 0 when no 3-cycles exist
+    ccoef = cycles3 / (d * (d - 1))
+    return ccoef
