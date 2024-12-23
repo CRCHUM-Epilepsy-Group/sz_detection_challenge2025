@@ -19,7 +19,8 @@ def get_events_info(tsv_file:str):
         dict: dataset_name (str), subject (str), session (str), run (str)
     """
 
-    pattern = '^(?P<dataset_name>.+?/BIDS_[^/]+)/sub-(?P<subject>\d{2,3})/ses-(?P<session>\d{2})/eeg/sub-(?P=subject)_ses-(?P=session)_task-[^_]+_run-(?P<run>\d{2})'
+    tsv_file = tsv_file.replace("\\", "/")
+    pattern = r'^(?P<dataset_name>.+?/BIDS_[^/]+)/sub-(?P<subject>\d{2,3})/ses-(?P<session>\d{2})/eeg/sub-(?P=subject)_ses-(?P=session)_task-[^_]+_run-(?P<run>\d{2})_events\.tsv'
     match = re.search(pattern, tsv_file)
 
     if match:
