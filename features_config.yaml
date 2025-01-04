@@ -1,0 +1,58 @@
+# Put inside epileptology
+features:
+  tf_decomposition:
+    - name: fuzzen
+      function: univariate.fuzzy_entropy
+      params:
+        m: [2]
+        r: [0.2]
+    - name: linelength
+      function: univariate.line_length
+      params:
+    - name: corr_dim
+      function: univariate.corr_dim
+      params:
+        embed_dim: 3
+  simple:
+    - name: band_power
+      function: univariate.band_power
+      params:
+        band_ranges:
+          - - !!python/tuple [1, 2]
+            - !!python/tuple [2, 4]
+            - !!python/tuple [4, 6]
+            - !!python/tuple [6, 8]
+            - !!python/tuple [8, 10]
+            - !!python/tuple [10, 13]
+            - !!python/tuple [13, 20]
+            - !!python/tuple [20, 40]
+            - !!python/tuple [40, 75]
+            - !!python/tuple [75, 99]
+    - name: peak_alpha
+      function: univariate.peak_alpha
+      params:
+  # connectivity:
+  #   - name: average_shortest_path_length
+  #     function: connectivity.average_shortest_path_length
+  #     params:
+
+frameworks:
+  tf_decomposition:
+    - name: dwt
+      function: timefrequency.dwt_eeg
+      params:
+        wavelet: sym5
+        max_level: 6
+  simple:
+    - name: simple
+      function: null
+      params: null
+  # connectivity:
+  #   - name: pli
+  #     function: connectivity.spectral_connectivity
+  #     params:
+  #       freqs:
+  #         - !!python/tuple [8, 13]
+  #         - !!python/tuple [13, 25]
+  #       method: pli
+  #       wavelet: cmor1.5-1.0
