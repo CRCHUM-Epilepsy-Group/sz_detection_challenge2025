@@ -116,7 +116,7 @@ def generate_labeled_df(tsv_file, dataset):
 
     seconds = list(range(1, recording_duration + 1))
     timestamp = [recording_dt + timedelta(seconds=i) for i in range(1, recording_duration + 1)]
-    assert len(timestamp) == timestamp, 'Timestamp array length does not match recording duration.'
+    assert len(timestamp) == recording_duration, 'Timestamp array length does not match recording duration.'
     
     df = pl.DataFrame({
     "subject": [subject] * recording_duration,
