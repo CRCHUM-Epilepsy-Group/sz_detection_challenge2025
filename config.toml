@@ -13,6 +13,7 @@ labels_file = "data/cleaned/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
+features_dir = "data/cleaned/features/"
 features_db_file = "data/cleaned/features.db"
 num_workers = 4
 

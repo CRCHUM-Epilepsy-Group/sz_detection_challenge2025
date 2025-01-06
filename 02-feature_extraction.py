@@ -22,6 +22,7 @@ def feature_extraction_pipeline(
     dataset_name, path = iterated
     try:
         eeg = pp.read_edf(path, **preprocessing_kwargs["read_edf"])
+        # Normalize EEG
         eeg = pp.filter_eeg(eeg, **preprocessing_kwargs["filter_eeg"])
         eeg = segmenting_function(eeg, **preprocessing_kwargs["segment_eeg"])
         extractor = FeatureExtractor(features, frameworks)
@@ -37,6 +38,7 @@ def feature_extraction_pipeline(
             subject=pl.lit(subject),
             dataset=pl.lit(dataset_name),
         )
+        features.write_parquet(s.FEATURES_DIR / f"{unique_session_id}.parquet")
 
         return features
 
@@ -84,9 +86,9 @@ def main():
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
     )
 
-    df = pl.concat(features)
-    with duckdb.connect(s.FEATURES_DB) as con:
-        con.execute("""CREATE OR REPLACE TABLE features AS FROM df""")
+    # df = pl.concat(features)
+    # with duckdb.connect(s.FEATURES_DB) as con:
+    #     con.execute("""CREATE OR REPLACE TABLE features AS FROM df""")
 
     print("data transferred to db")
 

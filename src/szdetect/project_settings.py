@@ -20,9 +20,10 @@ BIDS_DATASETS = {k: Path(v) for k, v in config["datasets"].items()}
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
-# FEATURES, FRAMEWORKS = parse_featureextraction_config(
-#     config["features"]["features_config"]
-# )
+FEATURES, FRAMEWORKS = parse_featureextraction_config(
+    config["features"]["features_config"]
+)
+FEATURES_DIR = config["features"]["features_dir"]
 NUM_WORKERS = config["features"]["num_workers"]
 
 PREPROCESSING_KWARGS = {
