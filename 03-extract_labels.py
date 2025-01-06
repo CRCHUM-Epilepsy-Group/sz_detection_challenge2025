@@ -2,6 +2,9 @@ import sys
 import polars as pl
 import re, tomllib
 import importlib.util
+from pathlib import Path
+from datetime import datetime, timedelta
+from szdetect import project_settings as s
 
 file_path = './01-pull_data.py'
 spec = importlib.util.spec_from_file_location("pull_data", file_path)
@@ -74,30 +77,58 @@ def update_seizure_labels(df, sz_events_df):
         )
     return df
 
-def generate_labeled_df(tsv_file):
+
+def generate_labeled_df(tsv_file, dataset):
+    """
+    Generate a polars dataframe from _events.tsv file.
+    Parameters:
+        tsv_file (str): path and name of the _events.tsv file.
+        dataset (str): name of the dataset containing the tsv.
+    Returns:
+        pl.Dataframe: columns [subject, session, run, unique_id, dataset_name, second, timestamp, label, training]
+    """
     info = get_events_info(tsv_file)
-    dataset_name = info['dataset_name']
+    # dataset_name = info['dataset_name']
+    dataset_name = dataset
+    # Here dataset is set according to provided name,
+    # no verification is implemented at this level between provided dataset name and tsv file path
+    # TODO add verification for dataset name
+    """
+    tsv_path = info['dataset_name']
+    config_path = config['datasets'][dataset]
+    assert Path(tsv_path).resolve() == Path(config_path).resolve(), 'Paths do not match'
+    """
+
     subject = info['subject']
     session = info['session']
     run = info['run']
+    unique_id = f'{dataset}_{subject}_{session}_{run}'
     seizure_label = False
     
     sz_events = extract_sz_events(tsv_file)
     if sz_events.shape[0]:
-        recording_duration = int(sz_events['recordingDuration'][0])
+        recording_duration = int(sz_events[0, 'recordingDuration'])
+        recording_dt = datetime.strptime(sz_events[0, 'dateTime'], "%Y-%m-%d %H:%M:%S")
     else:
         events = pl.read_csv(tsv_file, separator='\t')
-        recording_duration = int(events['recordingDuration'][0])
+        recording_duration = int(events[0, 'recordingDuration'])
+        recording_dt = datetime.strptime(events[0, 'dateTime'], "%Y-%m-%d %H:%M:%S")
 
-    timestamps = list(range(1, recording_duration + 1))
+    seconds = list(range(1, recording_duration + 1))
+    timestamp = [recording_dt + timedelta(seconds=i) for i in range(1, recording_duration + 1)]
+    assert len(timestamp) == timestamp, 'Timestamp array length does not match recording duration.'
     
     df = pl.DataFrame({
-    "dataset_name": [dataset_name] * recording_duration,
     "subject": [subject] * recording_duration,
     "session": [session] * recording_duration,
     "run": [run] * recording_duration,
-    "timestamp": timestamps,
-    "seizure_label": [seizure_label] * recording_duration})
+    "unique_id": [unique_id] * recording_duration,
+    "dataset_name": [dataset_name] * recording_duration,
+    "second": seconds,
+    "timestamp": timestamp,
+    "label": [seizure_label] * recording_duration,
+    "training": [False] * recording_duration    # TODO seperate training and test sets per patient
+    })
 
     if sz_events.shape[0]:
         lb_df = update_seizure_labels(df, sz_events)
@@ -111,26 +142,26 @@ def main():
     with open(".\config.toml", "rb") as f:
         config = tomllib.load(f)
 
-    bids_datasets = ['siena_bids','tuh_sz_bids', 'chb_mit_bids']
+    bids_datasets = s.BIDS_DATASETS.keys()
+    
+    final_df = None
 
-    events_tsv_files = []
+    # events_tsv_files = []
     for db in bids_datasets:
         bids_directory = config['datasets'][db] 
 
         db_tsv_files = pull_data.get_bids_file_paths(bids_dir=bids_directory,
                                                      extension='tsv',
                                                      data_type='events')
-        events_tsv_files.extend(db_tsv_files)
+        # events_tsv_files.extend(db_tsv_files)
 
-    final_df = None
+        for tsv_file in db_tsv_files:
+            labeled_df = generate_labeled_df(tsv_file, db)
 
-    for tsv_file in events_tsv_files:
-        labeled_df = generate_labeled_df(tsv_file)
-
-        if final_df is None:
-            final_df = labeled_df
-        else:
-            final_df = pl.concat([final_df, labeled_df], how="vertical")
+            if final_df is None:
+                final_df = labeled_df
+            else:
+                final_df = pl.concat([final_df, labeled_df], how="vertical")
 
     # Save to a Parquet file
     output_dir = config['output']['out_dir'] 
