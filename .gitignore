@@ -5,3 +5,4 @@
 /tests/notebooks/
 /tests/read_data.py
 .gitignore
+__pycache__/
