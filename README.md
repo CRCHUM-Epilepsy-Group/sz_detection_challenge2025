@@ -21,10 +21,11 @@ git clone https://github.com/CRCHUM-Epilepsy-Group/epileptology/tree/main .
 uv build
 # cd back to your local project directory, e.g.:
 cd ../sz_detection_challenge2025
-# Install the epileptology package using uv
- UV_FIND_LINKS=/path/to/epileptology/dist
- # In my case: UV_FIND_LINKS=/Users/emilelemoine/software/epileptology/dist
- uv sync
+# Install all packages except epileptology
+uv sync --frozen
+# Install the epileptology package using pip's interface in uv
+uv pip install /path/to/epileptology
+ # In my case: /Users/emilelemoine/software/epileptology
 ```
 
 
