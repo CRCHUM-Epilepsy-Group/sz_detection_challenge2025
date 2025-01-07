@@ -31,10 +31,10 @@ features:
     - name: peak_alpha
       function: univariate.peak_alpha
       params:
-  # connectivity:
-  #   - name: average_shortest_path_length
-  #     function: connectivity.average_shortest_path_length
-  #     params:
+  connectivity:
+    - name: average_shortest_path_length
+      function: connectivity.average_shortest_path_length
+      params:
 
 frameworks:
   tf_decomposition:
@@ -47,12 +47,17 @@ frameworks:
     - name: simple
       function: null
       params: null
-  # connectivity:
-  #   - name: pli
-  #     function: connectivity.spectral_connectivity
-  #     params:
-  #       freqs:
-  #         - !!python/tuple [8, 13]
-  #         - !!python/tuple [13, 25]
-  #       method: pli
-  #       wavelet: cmor1.5-1.0
+  connectivity:
+    - name: corr
+      function: connectivity.spectral_connectivity
+      params:
+        freqs:
+          - !!python/tuple [1, 4]
+          - !!python/tuple [4, 8]
+          - !!python/tuple [8, 13]
+          - !!python/tuple [13, 25]
+          - !!python/tuple [25, 40]
+          - !!python/tuple [40, 80]
+          - !!python/tuple [3, 40]
+        method: corr
+        wavelet: cmor1.5-1.0
