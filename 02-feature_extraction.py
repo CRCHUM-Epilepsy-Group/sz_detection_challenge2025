@@ -20,8 +20,13 @@ def feature_extraction_pipeline(
     dataset_name, path = iterated
     try:
         eeg = pp.read_edf(path, **preprocessing_kwargs["read_edf"])
+        sfreq = eeg.info["sfreq"]
         # Normalize EEG
         eeg = pp.filter_eeg(eeg, **preprocessing_kwargs["filter_eeg"])
+        eeg = pp.normalize_eeg(eeg)
+        eeg = pp.resample_eeg(
+            eeg, sfreq_orig=sfreq, **preprocessing_kwargs["resample_eeg"]
+        )
         eeg = segmenting_function(eeg, **preprocessing_kwargs["segment_eeg"])
         extractor = FeatureExtractor(features, frameworks)
         features = extractor.extract_feature(eeg)
