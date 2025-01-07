@@ -1,5 +1,4 @@
 #!/usr/bin/env ipython
-import duckdb
 import polars as pl
 from epileptology.utils.toolkit import calculate_over_pool
 from rich.console import Console
@@ -8,7 +7,6 @@ from epileptology.features.featureextraction import FeatureExtractor
 import epileptology.preprocessing as pp
 from bids import BIDSLayout
 from szdetect import project_settings as s
-from pathlib import Path
 import itertools
 
 
@@ -30,15 +28,18 @@ def feature_extraction_pipeline(
 
         subject = parse_file_entities(path)["subject"]
         session = parse_file_entities(path)["session"]
-        unique_session_id = f"{subject}_{session}"
+        run = parse_file_entities(path)["run"]
+        unique_id = f"{dataset_name}_{subject}_{session}_{run}"
 
         features = features.with_columns(
-            session=pl.lit(unique_session_id),
-            session_bids=pl.lit(session),
+            dataset_name=pl.lit(dataset_name),
             subject=pl.lit(subject),
-            dataset=pl.lit(dataset_name),
-        )
-        features.write_parquet(s.FEATURES_DIR / f"{unique_session_id}.parquet")
+            session=pl.lit(session),
+            run=pl.lit(run),
+            unique_id=pl.lit(unique_id),
+        ).rename({"time": "second"})
+        features.write_parquet(s.FEATURES_DIR / f"{unique_id}.parquet")
+        print(f"Features extracted for {unique_id}")
 
         return features
 
@@ -52,7 +53,7 @@ def main():
     console = Console()
 
     bids_datasets = {
-        name: BIDSLayout(path, path / "bids.db")
+        name: BIDSLayout(path, database_path=(path / "bids.db"))
         for name, path in s.BIDS_DATASETS.items()
     }
     session_ids_by_dataset = {
@@ -85,12 +86,6 @@ def main():
         segmenting_function=pp.segment_overlapping_windows,
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
     )
-
-    # df = pl.concat(features)
-    # with duckdb.connect(s.FEATURES_DB) as con:
-    #     con.execute("""CREATE OR REPLACE TABLE features AS FROM df""")
-
-    print("data transferred to db")
 
 
 if __name__ == "__main__":
