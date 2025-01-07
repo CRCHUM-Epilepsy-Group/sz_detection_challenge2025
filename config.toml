@@ -13,8 +13,24 @@ labels_file = "data/cleaned/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
+features_dir = "data/cleaned/features/"
 features_db_file = "data/cleaned/features.db"
 num_workers = 4
+
+[preprocessing]
+# -1 will be converted to None
+read_edf.channels = -1 # Default to the 19 channels in 10-20 system
+filter_eeg.lfreq = 1
+filter_eeg.hfreq = 99
+filter_eeg.noth_filter = -1
+resample_eeg.sfreq_new= 200
+segment_eeg.window_duration= 15
+segment_eeg.overlap= 1
+
+# "artifact_correction"= {
+     # "n_interpolates"= np.array([1, 5, 9]),
+     # "n_consensus_percs"= 4,
+     # "cv"= 5,
 
 [runtime]
 debug = true

@@ -20,33 +20,19 @@ BIDS_DATASETS = {k: Path(v) for k, v in config["datasets"].items()}
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
-# FEATURES, FRAMEWORKS = parse_featureextraction_config(
-#     config["features"]["features_config"]
-# )
+FEATURES, FRAMEWORKS = parse_featureextraction_config(
+    config["features"]["features_config"]
+)
+FEATURES_DIR = config["features"]["features_dir"]
 NUM_WORKERS = config["features"]["num_workers"]
 
-PREPROCESSING_KWARGS = {
-    "read_edf": {
-        "channels": None,  # Default to the 19 channels in 10-20 system
-    },
-    "filter_eeg": {
-        "l_freq": 1,
-        "h_freq": 99,
-        "notch_filter": None,
-    },
-    "resameple_eeg": {
-        "sfreq_new": 200,
-    },
-    "segment_eeg": {
-        "window_duration": 15,
-        "overlap": 1,
-    },
-    # "artifact_correction": {
-    #     "n_interpolates": np.array([1, 5, 9]),
-    #     "n_consensus_percs": 4,
-    #     "cv": 5,
-    # },
-}
+PREPROCESSING_KWARGS = config["preprocessing"]
+# HACK to replace -1 with None (not allowed in TOML)
+for step, kwargs in PREPROCESSING_KWARGS.items():
+    for kwarg_name, value in kwargs.items():
+        if value == -1:
+            value = None
+        PREPROCESSING_KWARGS[step][kwarg_name] = value
 
 # Runtime env
 DEBUG = config["runtime"]["debug"]
