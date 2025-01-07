@@ -241,6 +241,52 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
+=======
+name = "einops"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/ca/9f5dcb8bead39959454c3912266bedc4c315839cee0e0ca9f4328f4588c1/einops-0.8.0.tar.gz", hash = "sha256:63486517fed345712a8385c100cb279108d9d47e6ae59099b07657e983deae85", size = 58861 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/5a/f0b9ad6c0a9017e62d4735daaeb11ba3b6c009d69a26141b258cd37b5588/einops-0.8.0-py3-none-any.whl", hash = "sha256:9572fb63046264a862693b0a87088af3bdc8c068fde03de63453cbbde245465f", size = 43223 },
+]
+
+[[package]]
+name = "epileptology"
+version = "0.3.0"
+source = { registry = "../epileptology/dist" }
+dependencies = [
+    { name = "autoreject" },
+    { name = "dask" },
+    { name = "duckdb" },
+    { name = "einops" },
+    { name = "lightgbm" },
+    { name = "matplotlib" },
+    { name = "mne" },
+    { name = "multiprocess" },
+    { name = "numpy" },
+    { name = "pathos" },
+    { name = "polars" },
+    { name = "pyarrow" },
+    { name = "pybids" },
+    { name = "pytest" },
+    { name = "pywavelets" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "ruff" },
+    { name = "samplerate" },
+    { name = "scikit-learn" },
+    { name = "scikit-optimize" },
+    { name = "wandb" },
+    { name = "zarr" },
+]
+sdist = { path = "epileptology-0.3.0.tar.gz" }
+wheels = [
+    { path = "epileptology-0.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+>>>>>>> b3b51b5 (Added __pycache__ to gitignore)
 name = "fasteners"
 version = "0.19"
 source = { registry = "https://pypi.org/simple" }
