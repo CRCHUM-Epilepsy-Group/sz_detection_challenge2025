@@ -90,6 +90,7 @@ def main():
         frameworks=s.FRAMEWORKS,
         segmenting_function=pp.segment_overlapping_windows,
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
+        console=console,
     )
 
 
