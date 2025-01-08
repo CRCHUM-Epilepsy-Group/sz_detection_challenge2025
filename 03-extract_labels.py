@@ -64,8 +64,8 @@ def update_seizure_labels(df, sz_events_df):
         pl.DataFrame: Updated DataFrame with updated seizure labels.
     """
     for event in sz_events_df.iter_rows():
-        onset = event[0]
-        duration = event[1]
+        onset = int(event[sz_events_df.columns.index("onset")])
+        duration = int(event[sz_events_df.columns.index("duration")])
         offset = onset + duration
     
         df = df.with_columns(
