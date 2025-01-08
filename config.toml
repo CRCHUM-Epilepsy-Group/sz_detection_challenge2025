@@ -8,6 +8,9 @@ tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
 chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
 siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
 
+[utilities]
+bids_db_files_dir = "data/temp/bids_db"
+
 [labels]
 labels_file = "data/cleaned/labels.parquet"
 

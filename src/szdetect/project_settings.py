@@ -18,9 +18,13 @@ CHB_MIT_BIDS = Path(config["datasets"]["chb_mit_bids"])
 SIENA_BIDS = Path(config["datasets"]["siena_bids"])
 BIDS_DATASETS = {k: Path(v) for k, v in config["datasets"].items()}
 
+# Bids DB file
+BIDS_DB_FILES_DIR = Path(config["utilities"]["bids_db_files_dir"])
+BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
+
 # Labels
 LABELS_FILE = Path(config["labels"]["labels_file"])
-
+LABELS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]

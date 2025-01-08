@@ -57,33 +57,27 @@ def feature_extraction_pipeline(
 def main():
     console = Console()
 
+    # TODO: add database_path to Extract_labels script to speed up parsing of BIDS dbs
     bids_datasets = {
-        name: BIDSLayout(path, database_path=(path / "bids.db"))
+        name: BIDSLayout(path, database_path=(s.BIDS_DB_FILES_DIR / f"{name}.db"))
         for name, path in s.BIDS_DATASETS.items()
     }
-    session_ids_by_dataset = {
-        name: bids.get_sessions() for name, bids in bids_datasets.items()
-    }
-
-    if s.DEBUG:
-        session_ids_by_dataset = {
-            name: ids[:4] for name, ids in session_ids_by_dataset.items()
-        }
 
     # Get a list of all EEG files
-    eeg_files = itertools.chain(
-        *[
-            bids.get(session=eeg_list, extension=".edf", return_type="filename")
-            for bids, eeg_list in zip(
-                bids_datasets.values(), session_ids_by_dataset.values()
-            )
+    eeg_files = {
+        name: bids.get(extension=".edf", return_type="filename")
+        for name, bids in bids_datasets.items()
+    }
+    name_file_pairs = [(name, f) for name, files in eeg_files.items() for f in files]
+    if s.DEBUG:
+        # Sample from each dataset
+        name_file_pairs = [
+            (name, f) for name, files in eeg_files.items() for f in files[:2]
         ]
-    )
-    dataset_names = itertools.chain(*[name for name in bids_datasets.keys()])
 
     features = calculate_over_pool(
         feature_extraction_pipeline,
-        zip(dataset_names, eeg_files),
+        name_file_pairs,
         num_workers=s.NUM_WORKERS,
         debug=s.DEBUG,
         features=s.FEATURES,
@@ -91,6 +85,7 @@ def main():
         segmenting_function=pp.segment_overlapping_windows,
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
         console=console,
+        n_jobs=len(name_file_pairs),
     )
 
 
