@@ -1,117 +1,135 @@
 import numpy as np
 
+
+############################################################################################################
+#Support functions¸
+
 def cuberoot(x):
-        '''
-        Correctly handle the cube root for all weights
-        '''
-        return np.sign(x) * np.abs(x)**(1 / 3)
+    """
+    Correctly handles the cube root for all weights.
 
-def invert(W, copy=True):
-    '''
-    Inverts elementwise the weights in an input connection matrix.
-    '''
+    """
+    return np.sign(x) * np.abs(x) ** (1 / 3)
+
+def invert(CM: np.ndarray, copy: bool = True) -> np.ndarray:
+    """
+    Inverts elementwise the weights in a connection matrix.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
+    copy: bool, whether to operate on a copy of the matrix
+
+    Returns:
+    ---------------
+    inverted_CM: NxN np.ndarray, inverted connection matrix
+
+    """
     if copy:
-        W = W.copy()
-    E = np.where(W)
-    W[E] = 1. / W[E]
-    return W
+        CM = CM.copy()
+    indices = np.where(CM)
+    CM[indices] = 1.0 / CM[indices]
+    return CM
 
-def distance_wei_floyd(adjacency, transform=None):
+def distance_wei_floyd(CM: np.ndarray, transform: str = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Computes the topological length of the shortest possible path connecting 
-    every pair of nodes in the network
+    Computes the shortest path lengths between all node pairs using the Floyd-Warshall algorithm.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
+    transform: str, optional transformation ('log' or 'inv') applied to weights
+
+    Returns:
+    ---------------
+    SPL: NxN np.ndarray, shortest path lengths
+    hops: NxN np.ndarray, number of hops
+    Pmat: NxN np.ndarray, predecessor matrix
 
     """
-
-    #it is important not to do these transformations safely, to allow infinity
     if transform is not None:
         with np.errstate(divide='ignore'):
             if transform == 'log':
-                #SPL = logtransform(adjacency)
-                SPL = -np.log(adjacency)
+                SPL = -np.log(CM)
             elif transform == 'inv':
-                #SPL = invert(adjacency)
-                SPL = 1 / adjacency
+                SPL = 1 / CM
             else:
-                raise ValueError("Unexpected transform type. Only 'log' and " +
-                                 "'inv' are accepted")
+                raise ValueError("Unexpected transform type. Only 'log' and 'inv' are accepted.")
     else:
-        SPL = adjacency.copy().astype('float')
+        SPL = CM.copy().astype('float')
         SPL[SPL == 0] = np.inf
 
-    n = adjacency.shape[1]
-
-    hops = np.array(adjacency != 0).astype('float')
+    n = CM.shape[1]
+    hops = np.array(CM != 0).astype('float')
     Pmat = np.repeat(np.atleast_2d(np.arange(0, n)), n, 0)
-
-    #print(SPL)
 
     for k in range(n):
         i2k_k2j = np.repeat(SPL[:, [k]], n, 1) + np.repeat(SPL[[k], :], n, 0)
-
         path = SPL > i2k_k2j
         i, j = np.where(path)
         hops[path] = hops[i, k] + hops[k, j]
         Pmat[path] = Pmat[i, k]
+        SPL = np.minimum(SPL, i2k_k2j)
 
-        SPL = np.min(np.stack([SPL, i2k_k2j], 2), 2)
-
-    I = np.eye(n) > 0
-    SPL[I] = 0
-
-    hops[I], Pmat[I] = 0, 0
+    np.fill_diagonal(SPL, 0)
+    hops[np.eye(n, dtype=bool)] = 0
+    Pmat[np.eye(n, dtype=bool)] = 0
 
     return SPL, hops, Pmat
 
-def mean_first_passage_time(adjacency):
+def mean_first_passage_time(CM: np.ndarray) -> np.ndarray:
     """
-    Calculates mean first passage time of adjacency
+    Calculates the mean first passage time of a connection matrix.
 
-    Parameters :
-    adjacency (NxN array_like) : Weighted/unweighted, direct/undirected connection
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
 
-    Returns :
-    MFPT (NxN ndarray) : Pairwise mean first passage time array
+    Returns:
+    ---------------
+    MFPT: NxN np.ndarray, pairwise mean first passage time array
+
     """
-
-    P = np.linalg.solve(np.diag(np.sum(adjacency, axis=1)), adjacency)
-
+    P = np.linalg.solve(np.diag(np.sum(CM, axis=1)), CM)
     n = len(P)
     D, V = np.linalg.eig(P.T)
 
     aux = np.abs(D - 1)
     index = np.where(aux == aux.min())[0]
 
-    if aux[index] > 10e-3:
-        raise ValueError("Cannot find eigenvalue of 1. Minimum eigenvalue " +
-                         "value is {0}. Tolerance was ".format(aux[index]+1) +
-                         "set at 10e-3.")
+    if aux[index] > 1e-3:
+        raise ValueError(f"Cannot find eigenvalue of 1. Minimum eigenvalue value is {aux[index]}. Tolerance set at 1e-3.")
 
     w = V[:, index].T
-    w = w / np.sum(w)
+    w /= np.sum(w)
 
     W = np.real(np.repeat(w, n, 0))
     I = np.eye(n)
-
     Z = np.linalg.inv(I - P + W)
-
     mfpt = (np.repeat(np.atleast_2d(np.diag(Z)), n, 0) - Z) / W
 
     return mfpt
 
-def efficiency(Gw, local = False):
-    '''
-    Calculate the global efficiency of a graph.
 
-    Parameters :
-    Gw (NxN np.ndarray) : Undirected weighted connection matrix where each element represents 
-    the weight of the edge between nodes. 
-       
-    Returns :
-    Eglob (float) :  Global efficiency of the graph, calculated as the average of the inverse 
-    shortest path lengths between all pairs of nodes.
 
-    '''
+############################################################################################################
+# Features for efficiency
+
+def efficiency(CM: np.ndarray, local: bool = False) -> float:
+    """
+    Calculates global or local efficiency of a graph.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, undirected weighted connection matrix
+    local: bool, calculate local efficiency if True
+
+    Returns:
+    ---------------
+    Eglob: float, global efficiency if local is False
+    Eloc: Nx1 np.ndarray, local efficiency vector if local is True
+
+    """
     def distance_inv_wei(G):
         n = len(G)
         D = np.zeros((n, n))  # distance matrix
@@ -143,23 +161,17 @@ def efficiency(Gw, local = False):
         np.fill_diagonal(D, 0)
         return D
 
-    n = len(Gw)
-    Gl = invert(Gw, copy=True)  # connection length matrix
-    A = np.array((Gw != 0), dtype=int)
+    n = len(CM)
+    Gl = invert(CM, copy=True)  # connection length matrix
+    A = np.array((CM != 0), dtype=int)
     #local efficiency algorithm described by Rubinov and Sporns 2010, not recommended
     if local == 'original':
         E = np.zeros((n,))
         for u in range(n):
-            # V,=np.where(Gw[u,:])		#neighbors
-            # k=len(V)					#degree
-            # if k>=2:					#degree must be at least 2
-            #	e=(distance_inv_wei(Gl[V].T[V])*np.outer(Gw[V,u],Gw[u,V]))**1/3
-            #	E[u]=np.sum(e)/(k*k-k)
-
             # find pairs of neighbors
-            V, = np.where(np.logical_or(Gw[u, :], Gw[:, u].T))
+            V, = np.where(np.logical_or(CM[u, :], CM[:, u].T))
             # symmetrized vector of weights
-            sw = cuberoot(Gw[u, V]) + cuberoot(Gw[V, u].T)
+            sw = cuberoot(CM[u, V]) + cuberoot(CM[V, u].T)
             # inverse distance matrix
             e = distance_inv_wei(Gl[np.ix_(V, V)])
             # symmetrized inverse distance matrix
@@ -177,8 +189,8 @@ def efficiency(Gw, local = False):
     elif local in (True, 'local'):
         E = np.zeros((n,))
         for u in range(n):
-            V, = np.where(np.logical_or(Gw[u, :], Gw[:, u].T))
-            sw = cuberoot(Gw[u, V]) + cuberoot(Gw[V, u].T)
+            V, = np.where(np.logical_or(CM[u, :], CM[:, u].T))
+            sw = cuberoot(CM[u, V]) + cuberoot(CM[V, u].T)
             e = distance_inv_wei(cuberoot(Gl)[np.ix_(V, V)])
             se = e+e.T
          
@@ -196,46 +208,50 @@ def efficiency(Gw, local = False):
     return E
 
 
-def diffusion_efficiency(adj):
-    '''
-    Calculate the efficiency of information diffusion across a network.
-    The function computes two efficiencies: the pairwise diffusion efficiency between 
-    each node pair, and the mean global diffusion efficiency across the network. 
 
-    Parameters:
-    adj (NxN np.ndarray) : weighted/unweighted, directed/undirected adjacency matrix
+def diffusion_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray]:
+    """
+    Calculates the efficiency of information diffusion in the network.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
 
     Returns:
-    gediff (float) : mean global diffusion efficiency
-    ediff (NxN np.ndarray) : pairwise  diffusion efficiency matrix
-    '''
-    n = len(adj)
-    adj = adj.copy()
-    mfpt = mean_first_passage_time(adj)
+    ---------------
+    gediff: float, mean global diffusion efficiency
+    ediff: NxN np.ndarray, pairwise diffusion efficiency matrix
+
+    """
+    n = len(CM)
+    CM_copy = CM.copy()
+    mfpt = mean_first_passage_time(CM_copy)
     with np.errstate(divide='ignore'):
         ediff = 1 / mfpt
     np.fill_diagonal(ediff, 0)
     gediff = np.sum(ediff) / (n ** 2 - n)
+
     return gediff, ediff
 
-def rout_efficiency(D):
-    '''
-    The routing efficiency is the average of inverse shortest path length.
- 
-    The local routing efficiency of a node u is the routing efficiency
-    computed on the subgraph formed by the neighborhood of node u (excluding node u).
 
-    Parameters :
-    D (NxN np.ndarray) : Weighted/unweighted directed/undirected connection weight or length
-    matrix
 
-    Returns :
-    GErout (float) : Mean global routing efficiency
-    Erout (NxN np.ndarray) : Pairwise routing efficiency matrix
-    Eloc (Nx1 np.ndarray) : Local efficiency vector
-    '''
-    n = len(D)
-    Erout, _, _ = distance_wei_floyd(D, transform=None)
+def rout_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+    """
+    Calculates routing efficiency of the network.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
+
+    Returns:
+    ---------------
+    GErout: float, mean global routing efficiency
+    Erout: NxN np.ndarray, pairwise routing efficiency matrix
+    Eloc: Nx1 np.ndarray, local routing efficiency vector
+
+    """
+    n = len(CM)
+    Erout, _, _ = distance_wei_floyd(CM, transform=None)
     with np.errstate(divide='ignore'):
         Erout = 1 / Erout
     np.fill_diagonal(Erout, 0)
@@ -244,9 +260,9 @@ def rout_efficiency(D):
 
     Eloc = np.zeros((n,))
     for u in range(n):
-        Gu, = np.where(np.logical_or(D[u, :], D[:, u].T))
+        Gu, = np.where(np.logical_or(CM[u, :], CM[:, u].T))
         nGu = len(Gu)
-        e, _, _ = distance_wei_floyd(D[Gu, :][:, Gu], transform=None)
+        e, _, _ = distance_wei_floyd(CM[Gu, :][:, Gu], transform=None)
         with np.errstate(divide='ignore'):
             e = 1 / e
         np.fill_diagonal(e, 0)

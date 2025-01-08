@@ -2,22 +2,24 @@ import numpy as np
 import networkx as nx
 import community as community_louvain
 
+############################################################################################################
+# features for centrality
 
-def betweenness(G):
-    '''
-    Node betweenness centrality is the fraction of all shortest paths in
-    the network that contain a given node. Nodes with high values of
-    betweenness centrality participate in a large number of shortest paths.
+def betweenness(CM: np.ndarray) -> np.ndarray:
+    """
+    Computes node betweenness centrality from a connectivity matrix.
 
-    Parameters:
-    L (NxN np.ndarray) : directed/undirected weighted connection matrix
+    Args:
+    ---------------
+    CM: NxN np.ndarray, directed/undirected weighted connection matrix
 
     Returns:
-    BC (Nx1 np.ndarray) : node betweenness centrality vector
+    ---------------
+    BC: Nx1 np.ndarray, node betweenness centrality vector
 
-    '''
-    n = len(G)
-    BC = np.zeros((n,))  # vertex betweenness
+    """
+    n = len(CM)
+    BC = np.zeros((n,))
 
     for u in range(n):
         D = np.tile(np.inf, (n,))
@@ -29,17 +31,17 @@ def betweenness(G):
         Q = np.zeros((n,), dtype=int)  # indices
         q = n - 1  # order of non-increasing distance
 
-        G1 = G.copy()
+        CM_temp = CM.copy()
         V = [u]
         while True:
             S[V] = 0  # distance u->V is now permanent
-            G1[:, V] = 0  # no in-edges as already shortest
+            CM_temp[:, V] = 0  # no in-edges as already shortest
             for v in V:
                 Q[q] = v
                 q -= 1
-                W, = np.where(G1[v, :])  # neighbors of v
+                W, = np.where(CM_temp[v, :])  # neighbors of v
                 for w in W:
-                    Duw = D[v] + G1[v, w]  # path length to be tested
+                    Duw = D[v] + CM_temp[v, w]  # path length to be tested
                     if Duw < D[w]:  # if new u->w shorter than old
                         D[w] = Duw
                         NP[w] = NP[v]  # NP(u->w) = NP of new path
@@ -65,36 +67,29 @@ def betweenness(G):
     return BC
 
 
-def diversity_coef(W):
-    '''
-    Calculates the Shannon-entropy based diversity coefficient, which measures the
-    diversity of intermodular connections of individual nodes, ranging from 0 to 1.
+def diversity_coef(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Computes the diversity coefficient for nodes based on positive and negative connections.
 
-    Parameters :
-    W (NxN np.ndarray): Undirected connection matrix
+    Args:
+    ---------------
+    CM: NxN np.ndarray, undirected connection matrix
 
-    Returns :
-    Hpos (Nx1 np.ndarray): Diversity coefficient based on positive connections
-    Hneg (Nx1 np.ndarray): Diversity coefficient based on negative connections
-    '''
-    # Create a graph
-    G = nx.from_numpy_array(W)
+    Returns:
+    ---------------
+    Hpos: Nx1 np.ndarray, diversity coefficient based on positive connections
+    Hneg: Nx1 np.ndarray, diversity coefficient based on negative connections
 
-    # Detect communities
+    """
+    G = nx.from_numpy_array(CM)
     partition = community_louvain.best_partition(G)
-
-    # Convert partition to a numpy array (ci vector)
     ci = np.array([partition[node] for node in G.nodes()])
-    # Relabeling communities for easy indexing
     _, ci = np.unique(ci, return_inverse=True)
     ci += 1
 
-    print(ci)
-    print(ci.shape)
-    n = len(W)  # number of nodes
+    n = len(CM)  # number of nodes
     m = np.max(ci)  # number of modules
 
-    # Function to calculate entropy
     def entropy(w):
         S = np.sum(w, axis=1)  # strength
         Snm = np.zeros((n, m))  # node-to-module degree
@@ -104,69 +99,69 @@ def diversity_coef(W):
         pnm[np.isnan(pnm)] = 0  # Handle division by zero
         return -np.sum(pnm * np.log2(np.clip(pnm, 1e-10, 1)), axis=1) / np.log2(m)
 
-    # Handling errors explicitly
     with np.errstate(invalid='ignore', divide='ignore'):
-        Hpos = entropy(W * (W > 0))
-        Hneg = entropy(-W * (W < 0))
+        Hpos = entropy(CM * (CM > 0))
+        Hneg = entropy(-CM * (CM < 0))
 
     return Hpos, Hneg
 
 
-def edge_betweenness(G):
-    '''
-    Edge betweenness centrality is the fraction of all shortest paths in
-    the network that contain a given edge. Edges with high values of
-    betweenness centrality participate in a large number of shortest paths.
+def edge_betweenness(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Computes edge and node betweenness centrality.
 
-    Parameters :
-    L (NxN np.ndarray) : directed/undirected weighted connection matrix
+    Args:
+    ---------------
+    CM: NxN np.ndarray, directed/undirected weighted connection matrix
 
-    Returns :
-    EBC (NxN np.ndarray) : edge betweenness centrality matrix
-    BC (Nx1 np.ndarray) : node betweenness centrality vector
-    '''
-    n = len(G)
-    BC = np.zeros((n,))  # vertex betweenness
-    EBC = np.zeros((n, n))  # edge betweenness
+    Returns:
+    ---------------
+    EBC: NxN np.ndarray, edge betweenness centrality matrix
+    BC: Nx1 np.ndarray, node betweenness centrality vector
+
+    """
+    n = len(CM)
+    BC = np.zeros((n,))
+    EBC = np.zeros((n, n))
 
     for u in range(n):
         D = np.tile(np.inf, n)
-        D[u] = 0  # distance from u
+        D[u] = 0  # Distance from u to itself
         NP = np.zeros((n,))
-        NP[u] = 1  # number of paths from u
-        S = np.ones((n,), dtype=bool)  # distance permanence
-        P = np.zeros((n, n))  # predecessors
-        Q = np.zeros((n,), dtype=int)  # indices
-        q = n - 1  # order of non-increasing distance
+        NP[u] = 1  # Number of shortest paths
+        S = np.ones((n,), dtype=bool)  # Distance permanence
+        P = np.zeros((n, n))  # Predecessors matrix
+        Q = np.zeros((n,), dtype=int)
+        q = n - 1
 
-        G1 = G.copy()
+        CM_temp = CM.copy()  # Create a temporary copy of CM
         V = [u]
         while True:
-            S[V] = 0  # distance u->V is now permanent
-            G1[:, V] = 0  # no in-edges as already shortest
+            S[V] = 0  # Mark distances to V as permanent
+            CM_temp[:, V] = 0  # Remove in-edges to V
             for v in V:
                 Q[q] = v
                 q -= 1
-                W, = np.where(G1[v, :])  # neighbors of v
+                W, = np.where(CM_temp[v, :])  # Find neighbors
                 for w in W:
-                    Duw = D[v] + G1[v, w]  # path length to be tested
-                    if Duw < D[w]:  # if new u->w shorter than old
+                    Duw = D[v] + CM_temp[v, w]
+                    if Duw < D[w]:
                         D[w] = Duw
-                        NP[w] = NP[v]  # NP(u->w) = NP of new path
+                        NP[w] = NP[v]
                         P[w, :] = 0
-                        P[w, v] = 1  # v is the only predecessor
-                    elif Duw == D[w]:  # if new u->w equal to old
-                        NP[w] += NP[v]  # NP(u->w) sum of old and new
-                        P[w, v] = 1  # v is also a predecessor
+                        P[w, v] = 1
+                    elif Duw == D[w]:
+                        NP[w] += NP[v]
+                        P[w, v] = 1
 
             if D[S].size == 0:
-                break  # all nodes reached, or
-            if np.isinf(np.min(D[S])):  # some cannot be reached
-                Q[:q + 1], = np.where(np.isinf(D)) # these are first in line.
+                break  # All nodes reached
+            if np.isinf(np.min(D[S])):
+                Q[:q + 1], = np.where(np.isinf(D))  # Mark unreachable nodes
                 break
             V, = np.where(D == np.min(D[S]))
 
-        DP = np.zeros((n,))  # dependency
+        DP = np.zeros((n,))  # Dependency values
         for w in Q[:n - 1]:
             BC[w] += DP[w]
             for v in np.where(P[w, :])[0]:
@@ -176,74 +171,81 @@ def edge_betweenness(G):
 
     return EBC, BC
 
-def participation_coef(W):
-    '''
-    Participation coefficient is a measure of diversity of intermodular
-    connections of individual nodes.  
+def participation_coef(CM: np.ndarray) -> np.ndarray:
+    """
+    Computes the participation coefficient for nodes.
 
-    Parameters :
-    W (NxN np.ndarray) : binary/weighted directed/undirected connection matrix
+    Args:
+    ---------------
+    CM: NxN np.ndarray, binary/weighted directed/undirected connection matrix
 
-    Returns :
-    P (Nx1 np.ndarray) : participation coefficient
-    '''
-    G = nx.from_numpy_array(W)
+    Returns:
+    ---------------
+    P: Nx1 np.ndarray, participation coefficient
 
-    # Detect communities
+    """
+    G = nx.from_numpy_array(CM)
     partition = community_louvain.best_partition(G)
-
-    # Convert partition to a numpy array (ci vector)
     ci = np.array([partition[node] for node in G.nodes()])
     _, ci = np.unique(ci, return_inverse=True)
     ci += 1
 
-    n = len(W)  # number of vertices
-    Ko = np.sum(W, axis=1)  # (out) degree
-    Gc = np.dot((W != 0), np.diag(ci))  # neighbor community affiliation
-    Kc2 = np.zeros((n,))  # community-specific neighbors
+    n = len(CM)  # Number of nodes
+    Ko = np.sum(CM, axis=1)  # Node degree
+    Gc = np.dot((CM != 0), np.diag(ci))  # Community affiliation
+    Kc2 = np.zeros((n,))
 
     for i in range(1, int(np.max(ci)) + 1):
-        Kc2 = Kc2 + np.square(np.sum(W * (Gc == i), axis=1))
+        Kc2 += np.square(np.sum(CM * (Gc == i), axis=1))
 
     P = np.ones((n,)) - Kc2 / np.square(Ko)
-    # P=0 if for nodes with no (out) neighbors
-    P[np.where(np.logical_not(Ko))] = 0
+    P[np.where(Ko == 0)] = 0  # Handle nodes with no connections
 
     return P
 
-def module_degree_zscore(W):
-    '''
-    The within-module degree z-score is a within-module version of degree
-    centrality.
+def module_degree_zscore(CM: np.ndarray) -> np.ndarray:
+    """
+    Computes the within-module degree z-score for nodes.
 
-    Parameters :
-    W (NxN np.narray) : binary/weighted directed/undirected connection matrix
+    Args:
+    ---------------
+    CM: NxN np.ndarray, binary/weighted directed/undirected connection matrix
 
-    Returns :
-    Z (Nx1 np.ndarray) : within-module degree Z-score
-    '''
-    G = nx.from_numpy_array(W)
+    Returns:
+    ---------------
+    Z: Nx1 np.ndarray, within-module degree Z-score
 
-    # Detect communities
+    """
+    G = nx.from_numpy_array(CM)
     partition = community_louvain.best_partition(G)
-
-    # Convert partition to a numpy array (ci vector)
     ci = np.array([partition[node] for node in G.nodes()])
     _, ci = np.unique(ci, return_inverse=True)
     ci += 1
 
-    n = len(W)
-    Z = np.zeros((n,))  # number of vertices
+    n = len(CM)
+    Z = np.zeros((n,))
     for i in range(1, int(np.max(ci) + 1)):
-        Koi = np.sum(W[np.ix_(ci == i, ci == i)], axis=1)
+        Koi = np.sum(CM[np.ix_(ci == i, ci == i)], axis=1)
         Z[np.where(ci == i)] = (Koi - np.mean(Koi)) / np.std(Koi)
 
-    Z[np.where(np.isnan(Z))] = 0
+    Z[np.isnan(Z)] = 0  # Handle NaN values
     return Z
 
-def eigenvector_centrality(CIJ):
+def eigenvector_centrality(CM: np.ndarray) -> np.ndarray:
+    """
+    Computes eigenvector centrality for nodes.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
+
+    Returns:
+    ---------------
+    eig_centrality: Nx1 np.ndarray, eigenvector centrality
+
+    """
     from scipy import linalg
-    n = len(CIJ)
-    vals, vecs = linalg.eig(CIJ)
-    i = np.argmax(vals)
-    return np.abs(vecs[:, i])
+    vals, vecs = linalg.eig(CM)
+    i = np.argmax(vals)  # Identify the largest eigenvalue
+    eig_centrality = np.abs(vecs[:, i])
+    return eig_centrality
