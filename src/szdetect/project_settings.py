@@ -18,6 +18,10 @@ CHB_MIT_BIDS = Path(config["datasets"]["chb_mit_bids"])
 SIENA_BIDS = Path(config["datasets"]["siena_bids"])
 BIDS_DATASETS = {k: Path(v) for k, v in config["datasets"].items()}
 
+# Labels
+LABELS_FILE = Path(config["labels"]["labels_file"])
+
+
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
 FEATURES, FRAMEWORKS = parse_featureextraction_config(

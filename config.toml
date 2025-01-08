@@ -17,6 +17,10 @@ features_dir = "data/cleaned/features/"
 features_db_file = "data/cleaned/features.db"
 num_workers = 4
 
+[labels]
+# Preliminary path to store output files
+labels_file = "data/cleaned/labels.parquet"
+
 [preprocessing]
 # -1 will be converted to None
 read_edf.channels = -1 # Default to the 19 channels in 10-20 system
@@ -34,3 +38,4 @@ segment_eeg.overlap= 1
 
 [runtime]
 debug = true
+
