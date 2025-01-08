@@ -12,6 +12,7 @@ dependencies = [
     "zarr>=2.18.4",
     # "epileptology",
     "pybids>=0.18.1",
+    "networkx>=3.4.2",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -1,8 +1,8 @@
 version = 1
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '3.12'",
     "python_full_version < '3.12'",
+    "python_full_version >= '3.12'",
 ]
 
 [[package]]
@@ -117,7 +117,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593 }
 wheels = [
@@ -241,52 +241,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
-name = "einops"
-version = "0.8.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/79/ca/9f5dcb8bead39959454c3912266bedc4c315839cee0e0ca9f4328f4588c1/einops-0.8.0.tar.gz", hash = "sha256:63486517fed345712a8385c100cb279108d9d47e6ae59099b07657e983deae85", size = 58861 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/5a/f0b9ad6c0a9017e62d4735daaeb11ba3b6c009d69a26141b258cd37b5588/einops-0.8.0-py3-none-any.whl", hash = "sha256:9572fb63046264a862693b0a87088af3bdc8c068fde03de63453cbbde245465f", size = 43223 },
-]
-
-[[package]]
-name = "epileptology"
-version = "0.3.0"
-source = { registry = "../epileptology/dist" }
-dependencies = [
-    { name = "autoreject" },
-    { name = "dask" },
-    { name = "duckdb" },
-    { name = "einops" },
-    { name = "lightgbm" },
-    { name = "matplotlib" },
-    { name = "mne" },
-    { name = "multiprocess" },
-    { name = "numpy" },
-    { name = "pathos" },
-    { name = "polars" },
-    { name = "pyarrow" },
-    { name = "pybids" },
-    { name = "pytest" },
-    { name = "pywavelets" },
-    { name = "pyyaml" },
-    { name = "rich" },
-    { name = "ruff" },
-    { name = "samplerate" },
-    { name = "scikit-learn" },
-    { name = "scikit-optimize" },
-    { name = "wandb" },
-    { name = "zarr" },
-]
-sdist = { path = "epileptology-0.3.0.tar.gz" }
-wheels = [
-    { path = "epileptology-0.3.0-py3-none-any.whl" },
-]
-
-[[package]]
->>>>>>> b3b51b5 (Added __pycache__ to gitignore)
 name = "fasteners"
 version = "0.19"
 source = { registry = "https://pypi.org/simple" }
@@ -659,6 +613,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e0/4d/c5d8e349062a6dc73872dc5e41b5d935590a8863149f13036bb85045b1f2/mne-1.9.0.tar.gz", hash = "sha256:101967698b005a7f9071586e0469aebc83fe06f48717a95f3382a6f99c591162", size = 7104534 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/80/8e/e3e7de62143236712c359db50c6bd6486557b1c5efb7d45682b8efc0a6a6/mne-1.9.0-py3-none-any.whl", hash = "sha256:c26da9ac59bce963c5b25a3be9f5f61dd128f980cdc178a6fceef27743734306", size = 7392868 },
+]
+
+[[package]]
+name = "networkx"
+version = "3.4.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/1d/06475e1cd5264c0b870ea2cc6fdb3e37177c1e565c43f56ff17a10e3937f/networkx-3.4.2.tar.gz", hash = "sha256:307c3669428c5362aab27c8a1260aa8f47c4e91d3891f48be0141738d8d053e1", size = 2151368 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b9/54/dd730b32ea14ea797530a4479b2ed46a6fb250f682a9cfb997e968bf0261/networkx-3.4.2-py3-none-any.whl", hash = "sha256:df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f", size = 1723263 },
 ]
 
 [[package]]
@@ -1188,6 +1151,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "mne" },
+    { name = "networkx" },
     { name = "polars" },
     { name = "pybids" },
     { name = "pytest" },
@@ -1198,6 +1162,7 @@ dependencies = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.1.3" },
     { name = "mne", specifier = ">=1.8.0" },
+    { name = "networkx", specifier = ">=3.4.2" },
     { name = "polars", specifier = ">=1.17.1" },
     { name = "pybids", specifier = ">=0.18.1" },
     { name = "pytest", specifier = ">=8.3.4" },
@@ -1209,7 +1174,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [
