@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from szdetect import project_settings as s
 
-file_path = './01-pull_data.py'
+file_path = Path("./01-pull_data.py").resolve()
 spec = importlib.util.spec_from_file_location("pull_data", file_path)
 pull_data = importlib.util.module_from_spec(spec)
 sys.modules["pull_data"] = pull_data
@@ -167,7 +167,7 @@ def generate_labeled_df(tsv_file, dataset):
 
 def main():
     # Load BIDS dataset
-    with open(".\config.toml", "rb") as f:
+    with Path("config.toml").open("rb") as f:
         config = tomllib.load(f)
 
     bids_datasets = s.BIDS_DATASETS.keys()
@@ -200,8 +200,9 @@ def main():
             final_df = pl.concat([final_df, df], how="vertical")
 
     # Save to a Parquet file
-    output_dir = config['output']['out_dir'] 
-    final_df.write_parquet(output_dir + '/output_dataset.parquet') # TODO use pathlib instead of string concat
+    output_dir = Path(config['output']['out_dir'])
+    output_file = output_dir / 'output_dataset_pathlib.parquet'
+    final_df.write_parquet(output_file)
     
     print("Parquet file has been generated successfully.")
 
