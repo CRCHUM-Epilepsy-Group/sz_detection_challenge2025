@@ -18,16 +18,12 @@ features:
       function: univariate.band_power
       params:
         band_ranges:
-          - - !!python/tuple [1, 2]
-            - !!python/tuple [2, 4]
-            - !!python/tuple [4, 6]
-            - !!python/tuple [6, 8]
-            - !!python/tuple [8, 10]
-            - !!python/tuple [10, 13]
-            - !!python/tuple [13, 20]
-            - !!python/tuple [20, 40]
-            - !!python/tuple [40, 75]
-            - !!python/tuple [75, 99]
+          - - !!python/tuple [1, 4]
+            - !!python/tuple [4, 8]
+            - !!python/tuple [8, 13]
+            - !!python/tuple [13, 25]
+            - !!python/tuple [25, 40]
+            - !!python/tuple [40, 80]
     - name: peak_alpha
       function: univariate.peak_alpha
       params:
@@ -48,7 +44,7 @@ frameworks:
       function: null
       params: null
   connectivity:
-    - name: corr
+    - name: pli
       function: connectivity.spectral_connectivity
       params:
         freqs:

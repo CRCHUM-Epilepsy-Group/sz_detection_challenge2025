@@ -1,4 +1,5 @@
 #!/usr/bin/env ipython
+import time
 import polars as pl
 from epileptology.utils.toolkit import calculate_over_pool
 from rich.console import Console
@@ -7,7 +8,6 @@ from epileptology.features.featureextraction import FeatureExtractor
 import epileptology.preprocessing as pp
 from bids import BIDSLayout
 from szdetect import project_settings as s
-import itertools
 
 
 def feature_extraction_pipeline(
@@ -18,15 +18,12 @@ def feature_extraction_pipeline(
     preprocessing_kwargs,
 ):
     dataset_name, path = iterated
+    extraction_start_time = time.perf_counter()
     try:
         eeg = pp.read_edf(path, **preprocessing_kwargs["read_edf"])
-        sfreq = eeg.info["sfreq"]
         # Normalize EEG
         eeg = pp.filter_eeg(eeg, **preprocessing_kwargs["filter_eeg"])
-        eeg = pp.normalize_eeg(eeg)
-        eeg = pp.resample_eeg(
-            eeg, sfreq_orig=sfreq, **preprocessing_kwargs["resample_eeg"]
-        )
+        eeg = eeg.apply_function(pp.normalize_eeg)
         eeg = segmenting_function(eeg, **preprocessing_kwargs["segment_eeg"])
         extractor = FeatureExtractor(features, frameworks)
         features = extractor.extract_feature(eeg)
@@ -42,16 +39,19 @@ def feature_extraction_pipeline(
             session=pl.lit(session),
             run=pl.lit(run),
             unique_id=pl.lit(unique_id),
-        ).rename({"time": "second"})
+            second=pl.col("epoch").cast(pl.Int32),
+        )
+        print("Writing parquet to file")
         features.write_parquet(s.FEATURES_DIR / f"{unique_id}.parquet")
-        print(f"Features extracted for {unique_id}")
+        extraction_duration = time.perf_counter() - extraction_start_time
+        print(f"Features extracted for {unique_id} in {extraction_duration:.2f}s")
 
-        return features
+        return 1
 
     except (FileNotFoundError, IndexError, ValueError) as e:
         error_log = {"Patient_filename": str(path), "Error": str(e)}
         print(error_log)
-        return
+        return 0
 
 
 def main():
@@ -84,6 +84,7 @@ def main():
         frameworks=s.FRAMEWORKS,
         segmenting_function=pp.segment_overlapping_windows,
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
+        chunksize=4,
         console=console,
         n_jobs=len(name_file_pairs),
     )
