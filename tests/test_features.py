@@ -16,17 +16,15 @@ def test_betweenness(CM):
 
 def test_diversity_coef(CM): 
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
-    Hpos, Hneg = cenf.diversity_coef(CM)
+    Hpos = cenf.diversity_coef(CM)
     print(f'Diversity coefficient(positive) shape: {Hpos.shape}')
-    print(f'Diversity coefficient(negative) shape: {Hneg.shape}')
-    return Hpos, Hneg
+    return Hpos
 
-def test_edge_betweenness(CM):
+def test_node_betweenness(CM):
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
-    ebc, bc = cenf.edge_betweenness(CM)
-    print(f'Edge vertex betweenness shape: {ebc.shape}')
+    bc = cenf.node_betweenness(CM)
     print(f'Node betweenness shape: {bc.shape}')
-    return ebc, bc
+    return bc
 
 def test_participation_coef(CM):
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
@@ -42,33 +40,44 @@ def test_module_degree_zscore(CM):
 
 def test_eigenvec_centrality(CM):
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
-    eigenvec = cenf.eigenvec_centrality(CM)
+    eigenvec = cenf.eigenvector_centrality(CM)
     print(f'Eigenvector centrality shape: {eigenvec.shape}')
     return eigenvec
 
 def test_efficiency(CM):
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
     efficiency = eff.efficiency(CM)
-    print(f'Efficiency shape: {efficiency.shape}')
+    print(f'Efficiency value: {efficiency}')
     return efficiency
 
-def test_diffusion_efficiency(CM):
+def test_global_diffusion_efficiency(CM):
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
-    gediff, ediif = eff.diffusion_efficiency(CM)
-    print(f'mean global diffusion efficiency shape: {gediff.shape}')
-    print(f'pairwise diffusion efficiency shape: {ediif.shape}')
-    return gediff, ediif
+    gediff = eff.global_diffusion_efficiency(CM)
+    print(f'Mean global diffusion efficiency: {gediff}')
+    return gediff
 
-def test_rout_efficiency(CM):
+
+def test_global_rout_efficiency(CM):
     assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
-    GErout, Erout, Eloc = eff.rout_efficiency(CM)
-    print(f'Mean global routing eff shape: {GErout.shape}')
-    print(f'Pairwise routing eff shape: {Erout.shape}')
+    GErout = eff.global_rout_efficiency(CM)
+    print(f'Mean global routing efficiency: {GErout}')
+    return GErout
+
+def test_local_rout_efficiency(CM):
+    assert CM.ndim == 2, f"Expected 2 dimensions, got {CM.ndim}"
+    Eloc = eff.local_rout_efficiency(CM)
     print(f'Local efficiency shape: {Eloc.shape}')
-    return GErout, Erout, Eloc
+    return Eloc
 
-values_centrality = test_betweenness(slice)
-print(values_centrality)
 
-value_eff1, _ = test_diffusion_efficiency(slice)
-print(value_eff1)
+betweenness = test_betweenness(slice)
+Hpos = test_diversity_coef(slice)
+bc = test_node_betweenness(slice)
+part_coef = test_participation_coef(slice)
+zscore = test_module_degree_zscore(slice)
+eigenvec = test_eigenvec_centrality(slice)
+efficiency = test_efficiency(slice)
+gediff = test_global_diffusion_efficiency(slice)
+GErout = test_global_rout_efficiency(slice)
+Eloc = test_local_rout_efficiency(slice)
+

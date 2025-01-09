@@ -127,9 +127,9 @@ def efficiency(CM: np.ndarray, local: bool = False) -> float:
     Returns:
     ---------------
     Eglob: float, global efficiency if local is False
-    Eloc: Nx1 np.ndarray, local efficiency vector if local is True
 
     """
+    local = False
     def distance_inv_wei(G):
         n = len(G)
         D = np.zeros((n, n))  # distance matrix
@@ -209,7 +209,7 @@ def efficiency(CM: np.ndarray, local: bool = False) -> float:
 
 
 
-def diffusion_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray]:
+def global_diffusion_efficiency(CM: np.ndarray) -> float:
     """
     Calculates the efficiency of information diffusion in the network.
 
@@ -220,7 +220,6 @@ def diffusion_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray]:
     Returns:
     ---------------
     gediff: float, mean global diffusion efficiency
-    ediff: NxN np.ndarray, pairwise diffusion efficiency matrix
 
     """
     n = len(CM)
@@ -231,11 +230,10 @@ def diffusion_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray]:
     np.fill_diagonal(ediff, 0)
     gediff = np.sum(ediff) / (n ** 2 - n)
 
-    return gediff, ediff
+    return gediff
 
 
-
-def rout_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+def global_rout_efficiency(CM: np.ndarray) -> float:
     """
     Calculates routing efficiency of the network.
 
@@ -246,9 +244,6 @@ def rout_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
     Returns:
     ---------------
     GErout: float, mean global routing efficiency
-    Erout: NxN np.ndarray, pairwise routing efficiency matrix
-    Eloc: Nx1 np.ndarray, local routing efficiency vector
-
     """
     n = len(CM)
     Erout, _, _ = distance_wei_floyd(CM, transform=None)
@@ -257,6 +252,27 @@ def rout_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
     np.fill_diagonal(Erout, 0)
     GErout = (np.sum(Erout[np.where(np.logical_not(np.isnan(Erout)))]) / 
               (n ** 2 - n))
+    
+    return GErout
+
+def local_rout_efficiency(CM: np.ndarray) -> np.ndarray:
+    """
+    Calculates routing efficiency of the network.
+
+    Args:
+    ---------------
+    CM: NxN np.ndarray, connection matrix
+
+    Returns:
+    ----------------
+    Eloc: Nx1 np.ndarray, local routing efficiency vector
+
+    """
+    n = len(CM)
+    Erout, _, _ = distance_wei_floyd(CM, transform=None)
+    with np.errstate(divide='ignore'):
+        Erout = 1 / Erout
+    np.fill_diagonal(Erout, 0)
 
     Eloc = np.zeros((n,))
     for u in range(n):
@@ -268,4 +284,4 @@ def rout_efficiency(CM: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
         np.fill_diagonal(e, 0)
         Eloc[u] = np.sum(e) / nGu
 
-    return GErout, Erout, Eloc
+    return Eloc

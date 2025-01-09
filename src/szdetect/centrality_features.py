@@ -67,7 +67,7 @@ def betweenness(CM: np.ndarray) -> np.ndarray:
     return BC
 
 
-def diversity_coef(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def diversity_coef(CM: np.ndarray) -> np.ndarray:
     """
     Computes the diversity coefficient for nodes based on positive and negative connections.
 
@@ -78,7 +78,6 @@ def diversity_coef(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     Returns:
     ---------------
     Hpos: Nx1 np.ndarray, diversity coefficient based on positive connections
-    Hneg: Nx1 np.ndarray, diversity coefficient based on negative connections
 
     """
     G = nx.from_numpy_array(CM)
@@ -101,12 +100,11 @@ def diversity_coef(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     with np.errstate(invalid='ignore', divide='ignore'):
         Hpos = entropy(CM * (CM > 0))
-        Hneg = entropy(-CM * (CM < 0))
 
-    return Hpos, Hneg
+    return Hpos
 
 
-def edge_betweenness(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def node_betweenness(CM: np.ndarray) -> np.ndarray:
     """
     Computes edge and node betweenness centrality.
 
@@ -116,14 +114,12 @@ def edge_betweenness(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     Returns:
     ---------------
-    EBC: NxN np.ndarray, edge betweenness centrality matrix
     BC: Nx1 np.ndarray, node betweenness centrality vector
 
     """
     n = len(CM)
     BC = np.zeros((n,))
-    EBC = np.zeros((n, n))
-
+    
     for u in range(n):
         D = np.tile(np.inf, n)
         D[u] = 0  # Distance from u to itself
@@ -164,12 +160,8 @@ def edge_betweenness(CM: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         DP = np.zeros((n,))  # Dependency values
         for w in Q[:n - 1]:
             BC[w] += DP[w]
-            for v in np.where(P[w, :])[0]:
-                DPvw = (1 + DP[w]) * NP[v] / NP[w]
-                DP[v] += DPvw
-                EBC[v, w] += DPvw
 
-    return EBC, BC
+    return BC
 
 def participation_coef(CM: np.ndarray) -> np.ndarray:
     """
