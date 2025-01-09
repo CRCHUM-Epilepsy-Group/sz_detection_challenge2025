@@ -13,6 +13,7 @@ dependencies = [
     # "epileptology",
     "pybids>=0.18.1",
     "networkx>=3.4.2",
+    "community>=1.0.0b1",
 ]
 
 [tool.hatch.build.targets.wheel]
