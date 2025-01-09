@@ -1,19 +1,12 @@
-import importlib.util
 import random
 import re
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
 
 from szdetect import project_settings as s
-
-file_path = Path("./01-pull_data.py").resolve()
-spec = importlib.util.spec_from_file_location("pull_data", file_path)
-pull_data = importlib.util.module_from_spec(spec)
-sys.modules["pull_data"] = pull_data
-spec.loader.exec_module(pull_data)
+from szdetect import pull_data
 
 
 def get_events_info(tsv_file: str):
