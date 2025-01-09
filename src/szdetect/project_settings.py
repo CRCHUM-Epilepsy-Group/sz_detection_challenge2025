@@ -31,7 +31,8 @@ FEATURES_DB = config["features"]["features_db_file"]
 FEATURES, FRAMEWORKS = parse_featureextraction_config(
     config["features"]["features_config"]
 )
-FEATURES_DIR = config["features"]["features_dir"]
+FEATURES_DIR = Path(config["features"]["features_dir"])
+FEATURES_DIR.parent.mkdir(parents=True, exist_ok=True)
 NUM_WORKERS = config["features"]["num_workers"]
 
 PREPROCESSING_KWARGS = config["preprocessing"]
