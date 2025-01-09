@@ -206,6 +206,7 @@ def main():
             final_df = pl.concat([final_df, df], how="vertical")
 
     # Save to a Parquet file
+    s.LABELS_FILE.parent.mkdir(exist_ok=True, parents=True)
     final_df.write_parquet(s.LABELS_FILE)
     print("Parquet file has been generated successfully.")
 
