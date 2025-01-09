@@ -1,10 +1,12 @@
-import sys
-import random
-import polars as pl
-import re, tomllib
 import importlib.util
-from pathlib import Path
+import random
+import re
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
+
+import polars as pl
+
 from szdetect import project_settings as s
 
 file_path = Path("./01-pull_data.py").resolve()
