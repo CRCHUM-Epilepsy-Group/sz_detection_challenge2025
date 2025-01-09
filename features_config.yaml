@@ -1,4 +1,3 @@
-# Put inside epileptology
 features:
   tf_decomposition:
     - name: fuzzen
@@ -31,6 +30,51 @@ features:
     - name: average_shortest_path_length
       function: connectivity.average_shortest_path_length
       params:
+    - name: betweenness
+      function: szdetect.centrality_features.betweenness
+      params:
+    - name: diversity_coef
+      function: szdetect.centrality_features.diversity_coef
+      params:
+    - name: node_betweenness
+      function: szdetect.centrality_features.node_betweenness
+      params:
+    - name: participation_coef
+      function: szdetect.centrality_features.participation_coef
+      params:    
+    - name: module_degree_zscore
+      function: szdetect.centrality_features.module_degree_zscore
+      params:    
+    - name: eigenvector_centrality
+      function: szdetect.centrality_features.eigenvector_centrality
+      params:
+    - name: efficiency
+      function: szdetect.efficiency_features.efficiency
+      params:
+    - name: global_diffusion_efficiency
+      function: szdetect.efficiency_features.global_diffusion_efficiency
+      params:
+    - name: global_rout_efficiency
+      function: szdetect.efficiency_features.global_rout_efficiency
+      params:
+    - name: local_rout_efficiency
+      function: szdetect.efficiency_features.local_rout_efficiency
+      params:
+    - name: node_degree
+      function: szdetect.connectivity.node_degree
+      params:
+    - name: node_strength
+      function: szdetect.connectivity.node_strength
+      params:
+    - name: transitivity
+      function: szdetect.connectivity.transitivity
+      params:
+    - name: eigenvalues
+      function: szdetect.connectivity.eigenvalues
+      params:
+    # - name: node_degree
+    #   function: szdetect.connectivity.upper_right_triangle  # INVALID SHAPE
+    #   params:
 
 frameworks:
   tf_decomposition:
@@ -44,7 +88,7 @@ frameworks:
       function: null
       params: null
   connectivity:
-    - name: pli
+    - name: corr
       function: connectivity.spectral_connectivity
       params:
         freqs:

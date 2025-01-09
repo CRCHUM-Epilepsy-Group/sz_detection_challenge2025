@@ -30,11 +30,6 @@ resample_eeg.sfreq = 200
 segment_eeg.window_duration = 10
 segment_eeg.overlap = 1
 
-# "artifact_correction"= {
-     # "n_interpolates"= np.array([1, 5, 9]),
-     # "n_consensus_percs"= 4,
-     # "cv"= 5,
-
 [runtime]
 debug = true
 
