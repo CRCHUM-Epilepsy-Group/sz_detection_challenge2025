@@ -43,8 +43,8 @@ def feature_extraction_pipeline(
         )
         print("Writing parquet to file")
         features.write_parquet(s.FEATURES_DIR / f"{unique_id}.parquet")
-        extraction_duration = time.perf_counter() - extraction_start_time
-        print(f"Features extracted for {unique_id} in {extraction_duration:.2f}s")
+        extraction_duration = (time.perf_counter() - extraction_start_time) / 60
+        print(f"Features extracted for {unique_id} in {extraction_duration:.2f}m")
 
         return 1
 

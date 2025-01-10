@@ -27,9 +27,6 @@ features:
       function: univariate.peak_alpha
       params:
   connectivity:
-    - name: average_shortest_path_length
-      function: connectivity.average_shortest_path_length
-      params:
     - name: betweenness
       function: szdetect.centrality_features.betweenness
       params:
@@ -72,7 +69,7 @@ features:
     - name: eigenvalues
       function: szdetect.connectivity.eigenvalues
       params:
-    # - name: node_degree
+    # - name: upper_right_triangle
     #   function: szdetect.connectivity.upper_right_triangle  # INVALID SHAPE
     #   params:
 
