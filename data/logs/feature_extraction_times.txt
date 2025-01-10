@@ -1,0 +1,190 @@
+features:
+  tf_decomposition:
+    - name: fuzzen
+      function: univariate.fuzzy_entropy
+      params:
+        m: [2]
+        r: [0.2]
+    - name: linelength
+      function: univariate.line_length
+      params:
+    - name: corr_dim
+      function: univariate.corr_dim
+      params:
+        embed_dim: 3
+  simple:
+    - name: band_power
+      function: univariate.band_power
+      params:
+        band_ranges:
+          - - !!python/tuple [1, 4]
+            - !!python/tuple [4, 8]
+            - !!python/tuple [8, 13]
+            - !!python/tuple [13, 25]
+            - !!python/tuple [25, 40]
+            - !!python/tuple [40, 80]
+    - name: peak_alpha
+      function: univariate.peak_alpha
+      params:
+  connectivity:
+    - name: average_shortest_path_length
+      function: connectivity.average_shortest_path_length
+      params:
+
+frameworks:
+  tf_decomposition:
+    - name: dwt
+      function: timefrequency.dwt_eeg
+      params:
+        wavelet: sym5
+        max_level: 6
+  simple:
+    - name: simple
+      function: null
+      params: null
+  connectivity:
+    - name: pli
+      function: connectivity.spectral_connectivity
+      params:
+        freqs:
+          - !!python/tuple [1, 4]
+          - !!python/tuple [4, 8]
+          - !!python/tuple [8, 13]
+          - !!python/tuple [13, 25]
+          - !!python/tuple [25, 40]
+          - !!python/tuple [40, 80]
+          - !!python/tuple [3, 40]
+        method: corr
+        wavelet: cmor1.5-1.0
+
+------------------------------------------------
+STDOUT
+------------------------------------------------
+Extracting features for tf_decomposition
+EEG transformed in 1.46s
+Computing fuzzen
+Feature: fuzzen computed in 61.52s
+Computing linelength
+Feature: linelength computed in 0.26s
+Computing corr_dim
+Feature: corr_dim computed in 133.78s
+Features for tf_decomposition extracted in 3.26m
+Extracting features for simple
+EEG transformed in 0.05s
+Computing band_power
+Feature: band_power computed in 31.43s
+Computing peak_alpha
+Feature: peak_alpha computed in 30.56s
+Features for simple extracted in 1.03m
+Extracting features for connectivity
+EEG transformed in 159.27s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.10s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 27.06s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.10s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 12.98s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.11s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 12.66s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.11s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 7.81s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.11s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 8.90s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.10s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 78.62s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.11s
+Features for connectivity extracted in 0.00m
+Concatening features
+Writing parquet to file
+Features extracted for tuh_sz_bids_000_00_00 in 568.34s
+Extracting features for tf_decomposition
+EEG transformed in 1.09s
+Computing fuzzen
+Feature: fuzzen computed in 47.73s
+Computing linelength
+Feature: linelength computed in 0.21s
+Computing corr_dim
+Feature: corr_dim computed in 103.16s
+Features for tf_decomposition extracted in 2.52m
+Extracting features for simple
+EEG transformed in 0.04s
+Computing band_power
+Feature: band_power computed in 24.33s
+Computing peak_alpha
+Feature: peak_alpha computed in 23.66s
+Features for simple extracted in 0.80m
+Extracting features for connectivity
+EEG transformed in 123.57s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 21.27s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 10.28s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 10.05s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 6.05s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 7.07s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Extracting features for connectivity
+EEG transformed in 61.01s
+Computing average_shortest_path_length
+Feature: average_shortest_path_length computed in 0.08s
+Features for connectivity extracted in 0.00m
+Concatening features
+Writing parquet to file
+Features extracted for tuh_sz_bids_000_00_01 in 441.03s
+
+
+Notes
+SIENA
+-rwxr-xr-x 1 francoishardy francoishardy 456M Jan 29  2024 sub-01_ses-01_task-szMonitoring_run-00_eeg.edf -- (2292, 19, 2561)
+    - Lowpass at 30 Hz already applied
+    - High pass 1.6 Hz
+    - SFREQ 256
+
+TUH:
+-rwxr-xr-x 1 francoishardy francoishardy 1.9M Dec 18 14:40 sub-010_ses-00_task-szMonitoring_run-00_eeg.edf -- (291, 19, 2501)
+-rwxr-xr-x 1 francoishardy francoishardy  27M Dec 18 14:40 sub-010_ses-00_task-szMonitoring_run-01_eeg.edf
+    - LPass 99
+    - HPass 1
+    - SFREQ 250
+
+
+--------------------
+Complete set of features:
+Features extracted for tuh_sz_bids_000_00_00 in 658.49s -- 3.1M
