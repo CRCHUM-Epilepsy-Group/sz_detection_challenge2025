@@ -1,9 +1,10 @@
 import numpy as np
 import networkx as nx
-import community as community_louvain
+from community import community_louvain
 
 ############################################################################################################
 # features for centrality
+
 
 def betweenness(CM: np.ndarray) -> np.ndarray:
     """
@@ -39,7 +40,7 @@ def betweenness(CM: np.ndarray) -> np.ndarray:
             for v in V:
                 Q[q] = v
                 q -= 1
-                W, = np.where(CM_temp[v, :])  # neighbors of v
+                (W,) = np.where(CM_temp[v, :])  # neighbors of v
                 for w in W:
                     Duw = D[v] + CM_temp[v, w]  # path length to be tested
                     if Duw < D[w]:  # if new u->w shorter than old
@@ -54,12 +55,12 @@ def betweenness(CM: np.ndarray) -> np.ndarray:
             if D[S].size == 0:
                 break  # all nodes were reached
             if np.isinf(np.min(D[S])):  # some nodes cannot be reached
-                Q[:q + 1], = np.where(np.isinf(D))  # these are first in line
+                (Q[: q + 1],) = np.where(np.isinf(D))  # these are first in line
                 break
-            V, = np.where(D == np.min(D[S]))
+            (V,) = np.where(D == np.min(D[S]))
 
         DP = np.zeros((n,))
-        for w in Q[:n - 1]:
+        for w in Q[: n - 1]:
             BC[w] += DP[w]
             for v in np.where(P[w, :])[0]:
                 DP[v] += (1 + DP[w]) * NP[v] / NP[w]
@@ -98,7 +99,7 @@ def diversity_coef(CM: np.ndarray) -> np.ndarray:
         pnm[np.isnan(pnm)] = 0  # Handle division by zero
         return -np.sum(pnm * np.log2(np.clip(pnm, 1e-10, 1)), axis=1) / np.log2(m)
 
-    with np.errstate(invalid='ignore', divide='ignore'):
+    with np.errstate(invalid="ignore", divide="ignore"):
         Hpos = entropy(CM * (CM > 0))
 
     return Hpos
@@ -119,7 +120,7 @@ def node_betweenness(CM: np.ndarray) -> np.ndarray:
     """
     n = len(CM)
     BC = np.zeros((n,))
-    
+
     for u in range(n):
         D = np.tile(np.inf, n)
         D[u] = 0  # Distance from u to itself
@@ -138,7 +139,7 @@ def node_betweenness(CM: np.ndarray) -> np.ndarray:
             for v in V:
                 Q[q] = v
                 q -= 1
-                W, = np.where(CM_temp[v, :])  # Find neighbors
+                (W,) = np.where(CM_temp[v, :])  # Find neighbors
                 for w in W:
                     Duw = D[v] + CM_temp[v, w]
                     if Duw < D[w]:
@@ -153,15 +154,16 @@ def node_betweenness(CM: np.ndarray) -> np.ndarray:
             if D[S].size == 0:
                 break  # All nodes reached
             if np.isinf(np.min(D[S])):
-                Q[:q + 1], = np.where(np.isinf(D))  # Mark unreachable nodes
+                (Q[: q + 1],) = np.where(np.isinf(D))  # Mark unreachable nodes
                 break
-            V, = np.where(D == np.min(D[S]))
+            (V,) = np.where(D == np.min(D[S]))
 
         DP = np.zeros((n,))  # Dependency values
-        for w in Q[:n - 1]:
+        for w in Q[: n - 1]:
             BC[w] += DP[w]
 
     return BC
+
 
 def participation_coef(CM: np.ndarray) -> np.ndarray:
     """
@@ -195,6 +197,7 @@ def participation_coef(CM: np.ndarray) -> np.ndarray:
 
     return P
 
+
 def module_degree_zscore(CM: np.ndarray) -> np.ndarray:
     """
     Computes the within-module degree z-score for nodes.
@@ -223,6 +226,7 @@ def module_degree_zscore(CM: np.ndarray) -> np.ndarray:
     Z[np.isnan(Z)] = 0  # Handle NaN values
     return Z
 
+
 def eigenvector_centrality(CM: np.ndarray) -> np.ndarray:
     """
     Computes eigenvector centrality for nodes.
@@ -237,6 +241,7 @@ def eigenvector_centrality(CM: np.ndarray) -> np.ndarray:
 
     """
     from scipy import linalg
+
     vals, vecs = linalg.eig(CM)
     i = np.argmax(vals)  # Identify the largest eigenvalue
     eig_centrality = np.abs(vecs[:, i])

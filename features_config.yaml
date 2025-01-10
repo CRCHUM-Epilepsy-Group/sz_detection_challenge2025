@@ -41,10 +41,10 @@ features:
       params:
     - name: participation_coef
       function: szdetect.centrality_features.participation_coef
-      params:    
+      params:
     - name: module_degree_zscore
       function: szdetect.centrality_features.module_degree_zscore
-      params:    
+      params:
     - name: eigenvector_centrality
       function: szdetect.centrality_features.eigenvector_centrality
       params:
