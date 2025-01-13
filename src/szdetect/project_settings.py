@@ -45,3 +45,11 @@ for step, kwargs in PREPROCESSING_KWARGS.items():
 
 # Runtime env
 DEBUG = config["runtime"]["debug"]
+
+# Results
+RESULTS_DIR = Path(config["results"]["results_dir"])
+RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
+
+# Logs
+LOGS_FILE = Path(config["logs"]["log_file"])
+LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
