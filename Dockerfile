@@ -33,6 +33,9 @@ ADD . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
+# Install the szdetect package
+RUN uv pip install -e .
+
 # Switch to the non-privileged user to run the application.
 USER appuser
 
