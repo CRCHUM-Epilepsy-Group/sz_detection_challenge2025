@@ -5,7 +5,7 @@ FEATURE_GROUPS = {
     "efficiency": [
         "betweenness",
         "diversity_coef",
-        "node_betweeness",
+        "node_betweenness",
         "participation_coef",
         "module_degree_zscore",
         "eigenvector_centrality",
