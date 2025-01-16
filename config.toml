@@ -12,12 +12,12 @@ siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
 bids_db_files_dir = "data/temp/bids_db"
 
 [labels]
-labels_file = "data/cleaned/labels.parquet"
+labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
-features_dir = "data/cleaned/features/"
-features_db_file = "data/cleaned/features.db"
+features_dir = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features/"
+features_db_file = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features.db"
 num_workers = 1
 
 [preprocessing]
