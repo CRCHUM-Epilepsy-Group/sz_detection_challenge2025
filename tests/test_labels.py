@@ -11,7 +11,7 @@ def nb_patients(df):
 df = pl.read_parquet(s.LABELS_FILE)
 summary_df = pl.DataFrame([])
 
-for dataset, _ in s.BIDS_DATASETS.keys():
+for dataset in s.BIDS_DATASETS.keys():
     sub_df = df.filter((pl.col("dataset_name") == dataset))
     train_df = sub_df.filter((pl.col("training") == True))
     test_df = sub_df.filter((pl.col("training") == False))
