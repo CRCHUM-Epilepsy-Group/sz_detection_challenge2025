@@ -100,8 +100,8 @@ def pull_features(
     )
 
     query = f"""SELECT f.*, l.label
-                FROM feature_rel f
-                JOIN label_rel l
+                FROM feature_rel AS f
+                JOIN label_rel AS l
                     ON f.subject = l.subject 
                     AND f.session = l.session 
                     AND f.run = l.run 
