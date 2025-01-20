@@ -51,3 +51,31 @@ RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
 # Logs
 LOGS_FILE = Path(config["logs"]["log_file"])
 LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+FEATURE_GROUPS = {
+    "efficiency": [
+        "betweenness",
+        "diversity_coef",
+        "node_betweenness",
+        "participation_coef",
+        "module_degree_zscore",
+        "eigenvector_centrality",
+        "efficiency",
+        "global_diffusion_efficiency",
+        "global_rout_efficiency",
+        "local_rout_efficiency",
+    ],
+    "connectivity": [
+        "node_degree",
+        "node_strength",
+        "transitivity",
+        "eigenvalues",
+    ],
+    "univariate": [
+        "fuzzen",
+        "linelength",
+        "corr_dim",
+        "band_power",
+        "peak_alpha",
+    ],
+}
