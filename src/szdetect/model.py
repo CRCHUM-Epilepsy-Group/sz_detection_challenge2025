@@ -158,6 +158,190 @@ def get_train_test_splits(subjects_df, k: int):
     return idx
 
 
+def predictions_per_record(test_dataset, 
+                           record_id: str,
+                           model, scaled_X_test,
+                           tau=6, threshold=0.85, step=1,
+                           #plot_alarms=False, show_plots=True, save_fig=None, 
+                           #home_path=home
+                           ):
+    """
+    Generate predictions on the specified record given a trained model, and calculate performance metrics.
+    Args:
+        test_dataset : data with test seizures
+        record_row   : record index in data
+        model        : trained model to evaluate
+        scaled_X_test: test features scaled using mean of train data
+        tau          : window size for firing power regularization
+        threshold    : threshold for firing power regularization
+        step         : step that was used for moving window feature extraction
+        plot_alarms  : bool, plot vertical lines when firing power average crosses the threshold
+        show_plots   : bool, plot the features and predictions for 1h preictal of the selected seizure
+        save_fig     : str, default=None, is path provided, save the plots as png.
+        home_path    : str, home directory for the EDF and features
+    Returns:
+        dictionary with performances measures of the selected record.
+        {
+        OVLP: dictionary of TP, FP, FN, precision, recall and f1-score (event-based)
+        Detection_latency: latency between seizure onset and start of true positive event
+        TP_SZ_overlap: overlap between seizure and true positive event
+        Time_in_warning: duration of false positive events
+        percentage_tiw: (total time in warning)/(record duration)
+        TP_duration: duration of true positive events
+        FN_duration: duration of false negative events (missed seizures)
+        FP_hours: hours of the day of the false alarms
+        TP_hours: hours of the day of the true alarms
+        FN_hours: hours of the day of the missed alarms/seizures
+        regularized_predictions: array of regularized predictions representing high-risk alarms
+        }
+    """
+
+    predictions = model.predict(scaled_X_test)
+
+    #fs = 256
+    test_rec = test_dataset.filter(pl.col('unique_id')==record_id)
+    record_name = test_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
+    
+    logger.info(f'Analyzing EEG record : {record_name}')
+    """
+    meas_date = datetime.datetime.strptime(records.Record_start_date[record_row],
+                                           '%Y-%m-%d %H:%M:%S%z')
+    record_duration = records.n_records[record_row]
+    rec_dt = datetime.datetime.combine(meas_date.date(), datetime.datetime.min.time())
+    rec_dt = rec_dt.replace(tzinfo=pytz.utc).astimezone(pytz.utc)
+    diff = meas_date - rec_dt
+    tm = test_rec['timestamp']
+    tm = np.array(tm) / fs + int(diff.total_seconds())
+    """
+    rec_idx = test_rec.index.tolist()
+    test_lst = test_dataset.index.tolist()
+    rec_0 = test_lst.index(rec_idx[0])
+    rec_1 = test_lst.index(rec_idx[-1])
+
+    # Regularize prediction output with firing power method
+    reg_pred = firing_power(predictions[rec_0:rec_1 + 1], tau=tau)
+
+    """
+    Desc = records.Descriptions[record_row]
+    Desc = Desc.replace("[", "").replace("]", "").replace("'", "").split(', ') if not (pd.isna(Desc)) else []
+    Onsets = records.Onsets[record_row]
+    Onsets = Onsets.replace("[", "").replace("]", "").split(', ') if not (pd.isna(Onsets)) else []
+    Onsets = [int(x) for x in Onsets]
+    Durations = records.Durations[record_row]
+    Durations = Durations.replace("[", "").replace("]", "").split(', ') if not (pd.isna(Durations)) else []
+    Durations = [int(x) for x in Durations]
+    """
+    true_ann = np.array(test_rec.annotation)
+    pred_ann = np.array(reg_pred)
+    pred_ann = np.array([1 if x >= threshold else 0 for x in pred_ann])
+    OVLP = ovlp(true_ann, pred_ann, step)
+    """
+    # ########################################################################################################
+    # DO NOT REMOVE COMMENTED LINES IN THIS SECTION
+    # EXTRA PLOTS ALLOW VERIFYING DETAILS
+    formatter = matplotlib.ticker.FuncFormatter(lambda ms, x: time.strftime('%H:%M:%S', time.gmtime(ms)))
+    fig, ax = plt.subplots(figsize=(16, 4))
+    ax.set(xlabel="Time (UTC)", title="True vs predicted labels for patient %a, record %s" % (p, record_row))
+    # ax.plot(tm, test_rec['annotation'], c='g', label='y_true')
+    ax.scatter(tm, predictions[rec_0:rec_1 + 1], label='y_pred', alpha=.3, linewidths=.3)
+    # ax.plot(tm, reg_pred, marker='.', label='y_pred regularized (Firing Power)', alpha=.3)
+    ax.axhline(y=threshold, color='r', linestyle='--', alpha=0.7, label='Alarm Threshold')
+
+    pe = OVLP['pred_events']
+    for e in pe:
+        ev0 = test_rec.iloc[pe[e][0]]['timestamp'] / fs + int(diff.total_seconds())
+        ev1 = test_rec.iloc[pe[e][-1]]['timestamp'] / fs + int(diff.total_seconds())
+        if e in OVLP['pred_sz_events']:
+            ax.axvspan(ev0, ev1, alpha=.5, color='green', label='True alarm')
+        elif e in OVLP['pred_fp_events']:
+            ax.axvspan(ev0, ev1, alpha=.5, color='orange', label='False alarm')
+
+    for s in range(len(Desc)):
+        sz_onset = Onsets[s] + int(diff.total_seconds())
+        sz_end = Onsets[s] + Durations[s] + int(diff.total_seconds())
+        if Desc[s] == 'FBTCS':
+            ax.axvspan(sz_onset, sz_end, alpha=0.5, color='red', label='FBTCS')
+        elif Desc[s] == 'FIAS':
+            ax.axvspan(sz_onset, sz_end, alpha=0.5, color='skyblue', label='FIAS')
+        elif Desc[s] == 'FAS':
+            ax.axvspan(sz_onset, sz_end, alpha=0.5, color='grey', label='FAS')
+        elif Desc[s] == 'FUAS':
+            ax.axvspan(sz_onset, sz_end, alpha=0.5, color='powderblue', label='FUAS')
+
+    ax.xaxis.set_major_formatter(formatter)
+
+    if plot_alarms:
+        a_pred = np.array(reg_pred) - threshold
+        asc_zc = np.where(np.diff(np.sign(a_pred)) > 0)[0]  # crossing threshold in an ascending way
+        for xv in asc_zc:
+            plt.axvline(x=tm[xv + 1], color='g', linestyle='dotted', label='alarm')
+    # legend_without_duplicate_labels(ax)
+    ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0.)
+    if save_fig:
+        plt.savefig(save_fig + '_pred.png', dpi=300, bbox_inches='tight')
+    if show_plots:
+        plt.show()
+    else:
+        plt.close()
+    """
+    """
+    latency, overlap = [], []
+    tiw = []
+    for i in OVLP['pred_sz_events']:
+        l = []  # Detection latency between TP event and all available seizure on the record
+        w = []  # Overlap between true seizure and detection event
+        ev0 = test_rec.iloc[OVLP['pred_events'][i][0]]['timestamp'] / fs
+        ev1 = test_rec.iloc[OVLP['pred_events'][i][-1]]['timestamp'] / fs
+        for j in range(len(Onsets)):
+            l.append(ev0 - Onsets[j])
+            if (ev0 > Onsets[j]) and (ev0 < Onsets[j] + Durations[j]):
+                # To avoid accounting overlap if seizure is detected slightly after seizure offset
+                w.append(min(Onsets[j] + Durations[j], ev1) - ev0)
+        l = np.abs(l)
+        w = np.abs(w)
+        # Detection latency
+        latency.append(min(l))  # min is to find the correct seizure associated to the true positive event
+        # Overlap between true seizure reference and correct predicted event
+        overlap.extend(w)
+ 
+    for i in OVLP['pred_fp_events']:
+        ev0 = test_rec.iloc[OVLP['pred_events'][i][0]]['timestamp'] / fs
+        ev1 = test_rec.iloc[OVLP['pred_events'][i][-1]]['timestamp'] / fs
+        tiw.append(ev1 - ev0)  # TiW Time in warning is duration of FP
+
+    percentage_tiw = np.sum(tiw) / record_duration * 100
+    percentage_tiw = round(percentage_tiw, 4)
+    # False alarm rate per day = nbr false alarms in record *24h / record duration
+    FAR = len(tiw) * 24 * 3600 / record_duration
+    FAR = round(FAR, 4)
+    """
+    #  Sample-based metrics to estimate performance on records that contain no seizures.
+    try:
+        assert len(true_ann) == len(pred_ann)
+        pres_rec, rec_rec, f1_rec, support_rec = precision_recall_fscore_support(true_ann, pred_ann,
+                                                                                 zero_division=0)
+        supp = len(support_rec)
+        msg = f"""Sample-based performance on record {record_row}:  \
+        f1={100 * float('{:.4f}'.format(f1_rec[supp-1]))}% \
+        precision={100 * float('{:.4f}'.format(pres_rec[supp-1]))}% \
+        recall={100 * float('{:.4f}'.format(rec_rec[supp-1]))}%"""
+        ## Tiw = {round(np.sum(tiw)/3600, 2)}h/{round(record_duration/3600,1)}h = {percentage_tiw}%
+        logger.info(msg)
+    except (AssertionError, ValueError) as error:
+        logger.error(f'ERROR {error} len(true_ann)={len(true_ann)}, len(pred_ann)={len(pred_ann)}',
+                     exc_info=True)
+
+    return {'OVLP': OVLP,
+            #'Detection_latency': latency,
+            #'TP_SZ_overlap': overlap,
+            #'FAR': FAR,
+            #'Time_in_warning': tiw,
+            #'percentage_tiw': percentage_tiw,
+            #'FP_hours': FP_hours, 'TP_hours': TP_hours, 'FN_hours': FN_hours,
+            #'TP_duration': TP_duration, 'FN_duration': FN_duration,
+            'regularized_predictions': pred_ann}
+
+
 def calculate_metrics(model, test_set, scaled_X_test,
                       tau=6, threshold=.85, step=1,
                       show=True, 
@@ -181,19 +365,20 @@ def calculate_metrics(model, test_set, scaled_X_test,
 
     #y_test = test_set.iloc[:, -1]
     y_test = test_set.select('label')
-    latencies = []
-    TP_SZ_overlap = []
+    #latencies = []
+    #TP_SZ_overlap = []
     y_hat = []
     ovlp_precision, ovlp_recall, ovlp_f1 = [], [], []
     ovlp_FA, ovlp_MA = 0, 0
     #FP_h, TP_h, FN_h = [], [], []
     #TP_duration, FN_duration = [], []
-    tiw, percentage_tiw = [], []
-    FAR = []
+    #tiw, percentage_tiw = [], []
+    #FAR = []
 
-    for i in test_set.select(pl.col("unique_id").unique()).to_series().to_list():
+    for rec in test_set["unique_id"].unique():  #This should be index
+        
         # Predictions per record _______________________________________________________________________________________
-        pred = predictions_per_record(test_set, record_row=i, model=model,
+        pred = predictions_per_record(test_set, record_id=rec, model=model,
                                       scaled_X_test=scaled_X_test,
                                       tau=tau, threshold=threshold, step=step,
                                       plot_alarms=show, show_plots=show,
@@ -208,16 +393,16 @@ def calculate_metrics(model, test_set, scaled_X_test,
         ovlp_FA += OVLP['FP']
         ovlp_MA += OVLP['FN']
 
-        latencies.extend(pred['Detection_latency'])
-        TP_SZ_overlap.extend(pred['TP_SZ_overlap'])
-        FAR.append(pred['FAR'])
+        #latencies.extend(pred['Detection_latency'])
+        #TP_SZ_overlap.extend(pred['TP_SZ_overlap'])
+        #FAR.append(pred['FAR'])
         #FP_h.extend(pred['FP_hours'])
         #TP_h.extend(pred['TP_hours'])
         #FN_h.extend(pred['FN_hours'])
-        tiw.extend(pred['Time_in_warning'])
+        #tiw.extend(pred['Time_in_warning'])
         #TP_duration.extend(pred['TP_duration'])
         #FN_duration.extend(pred['FN_duration'])
-        percentage_tiw.append(pred['percentage_tiw'])
+        #percentage_tiw.append(pred['percentage_tiw'])
         y_hat.extend(pred['regularized_predictions'])
 
     # L = [1 if x >= threshold else 0 for x in y_hat]
@@ -259,10 +444,10 @@ def calculate_metrics(model, test_set, scaled_X_test,
             'ovlp_recall': 100 * float("{:.4f}".format(np.nanmean(ovlp_recall))),  # event-based
             'ovlp_f1': 100 * float("{:.4f}".format(np.nanmean(ovlp_f1))),  # event-based
             'ovlp_FA': ovlp_FA, 'ovlp_MA': ovlp_MA,  # event-based
-            'latencies': latencies,  # event-based
+            #'latencies': latencies,  # event-based
             #'TP_SZ_overlap': TP_SZ_overlap,  # event-based
-            'FAR': FAR,  # event-based
-            'Time_in_warning': tiw, 'percentage_tiw': percentage_tiw,  # event-based
+            #'FAR': FAR,  # event-based
+            #'Time_in_warning': tiw, 'percentage_tiw': percentage_tiw,  # event-based
             #'TP_duration': TP_duration, 'FN_duration': FN_duration,  # event-based
             #'FP_hours': FP_h, 'TP_hours': TP_h, 'FN_hours': FN_h  # event-based
             }
