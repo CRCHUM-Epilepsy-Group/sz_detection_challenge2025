@@ -146,7 +146,7 @@ def get_train_test_splits(subjects_df, k: int):
         train_idx = np.array(
             subjects_df.filter(
                 pl.col('subject').is_in(splits[f'fold{i}']['train'])
-            ).select(pl.col("index")).to_series()
+            ).select(pl.col("index")).to_series()  #TODO need to fix this as there is no column index
         )
         test_idx = np.array(
             subjects_df.filter(
@@ -454,7 +454,7 @@ def predictions_per_record(test_dataset,
         pres_rec, rec_rec, f1_rec, support_rec = precision_recall_fscore_support(true_ann, pred_ann,
                                                                                  zero_division=0)
         supp = len(support_rec)
-        msg = f"""Sample-based performance on record {record_row}:  \
+        msg = f"""Sample-based performance on record {record_name}:  \
         f1={100 * float('{:.4f}'.format(f1_rec[supp-1]))}% \
         precision={100 * float('{:.4f}'.format(pres_rec[supp-1]))}% \
         recall={100 * float('{:.4f}'.format(rec_rec[supp-1]))}%"""
@@ -477,7 +477,7 @@ def predictions_per_record(test_dataset,
 
 def calculate_metrics(model, test_set, scaled_X_test,
                       tau=6, threshold=.85, step=1,
-                      show=True, 
+                      #show=True, 
                       #home_path=home
                       ):
     """
@@ -508,13 +508,13 @@ def calculate_metrics(model, test_set, scaled_X_test,
     #tiw, percentage_tiw = [], []
     #FAR = []
 
-    for rec in test_set["unique_id"].unique():  #This should be index
+    for rec in test_set["unique_id"].unique():
         
         # Predictions per record _______________________________________________________________________________________
         pred = predictions_per_record(test_set, record_id=rec, model=model,
                                       scaled_X_test=scaled_X_test,
                                       tau=tau, threshold=threshold, step=step,
-                                      plot_alarms=show, show_plots=show,
+                                      #plot_alarms=show, show_plots=show,
                                       #home_path=home_path
                                       )
 
