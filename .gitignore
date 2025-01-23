@@ -6,3 +6,4 @@
 /tests/read_data.py
 .gitignore
 __pycache__/
+*draft*.py
