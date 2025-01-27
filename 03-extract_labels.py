@@ -68,7 +68,7 @@ def update_seizure_labels(df, sz_events_df):
         offset = onset + duration
 
         df = df.with_columns(
-            pl.when((df["second"] >= onset) & (df["second"] <= offset))
+            pl.when((df["second"] >= onset) & (df["second"] < offset))
             .then(True)
             .otherwise(df["label"])
             .alias("label")
@@ -142,9 +142,9 @@ def generate_labeled_df(tsv_file, dataset):
         recording_duration = int(events[0, "recordingDuration"])
         recording_dt = datetime.strptime(events[0, "dateTime"], "%Y-%m-%d %H:%M:%S")
 
-    seconds = list(range(1, recording_duration + 1))
+    seconds = list(range(0, recording_duration))
     timestamp = [
-        recording_dt + timedelta(seconds=i) for i in range(1, recording_duration + 1)
+        recording_dt + timedelta(seconds=i) for i in range(0, recording_duration)
     ]
     assert (
         len(timestamp) == recording_duration
