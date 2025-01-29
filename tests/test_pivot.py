@@ -6,7 +6,7 @@ from szdetect import pull_features as pf
 df = pf.pull_features(
     feature_dir=Path('./test_data/features'),
     label_file='./test_data/labels.parquet',
-    feature_group="efficiency",
+    feature_group="all",
     train_only=True)
 
 index_col = ['epoch', 'timestamp', 'dataset_name', 'subject',
@@ -23,9 +23,10 @@ long_df = long_df.with_columns([
     pl.col(column).fill_null('missing').alias(column) for column in feature_col
 ])
 
+long_df = long_df.filter(pl.col('feature') !='band_power')
 
 wide_df = long_df.pivot(
     values='value', 
     index=index_col, 
-    columns=feature_col,
+    on=feature_col,
 )
