@@ -12,9 +12,7 @@ df = pf.pull_features(
 index_col = ['epoch', 'timestamp', 'dataset_name', 'subject',
              'session', 'run', 'unique_id', 'second', 'label']
 
-feature_col = ['channel', 'freqs', 'feature', 'm', 'r', 'embed_dim',
-               'pre_transform', 'wavelet', 'max_level',
-               'method', 'region_side', 'params']
+feature_col = ['channel', 'freqs', 'feature']
 
 long_df = df.select(index_col + feature_col + ['value'])
 
