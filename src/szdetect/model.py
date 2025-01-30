@@ -35,10 +35,11 @@ from skopt import space
 # from sklearn.impute import IterativeImputer
 
 #from eegml import featureengineering as fe
-from szdetect import project_settings as s
+######from szdetect import project_settings as s
 
-s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
-logging.basicConfig(filename=s.LABELS_FILE, level=logging.INFO, format='%(message)s')
+#s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
+#logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
+logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 xgb.set_config(verbosity=0)
@@ -134,28 +135,28 @@ def get_train_test_splits(subjects_df, k: int):
     Args:
         subjects_df: dataframe of containing a column 'subject'
         k: number of folds
-    Returns:
+    Returns: # TODO fix description
         List of k tuples containing train and test indexes of the dataframe, for k folds.
     """
-    idx = []
+    #idx = []
     subjects_list = subjects_df.select(pl.col("subject").unique()).to_series().to_list()
 
     splits = split_subjects(subjects_list, k=k)
 
-    for i in range(k):
-        train_idx = np.array(
-            subjects_df.filter(
-                pl.col('subject').is_in(splits[f'fold{i}']['train'])
-            ).select(pl.col("index")).to_series()  #TODO need to fix this as there is no column index
-        )
-        test_idx = np.array(
-            subjects_df.filter(
-                pl.col('subject').is_in(splits[f'fold{i}']['test'])
-            ).select(pl.col("index")).to_series()
-        )
-        idx.append((train_idx, test_idx))
-    del train_idx, test_idx
-    return idx
+    ## for i in range(k):
+    ##     train_idx = np.array(
+    ##         subjects_df.filter(
+    ##             pl.col('subject').is_in(splits[f'fold{i}']['train'])
+    ##         ).select(pl.col("index")).to_series()  #TODO need to fix this as there is no column index
+    ##     )
+    ##     test_idx = np.array(
+    ##         subjects_df.filter(
+    ##             pl.col('subject').is_in(splits[f'fold{i}']['test'])
+    ##         ).select(pl.col("index")).to_series()
+    ##     )
+    ##     idx.append((train_idx, test_idx))
+    ## del train_idx, test_idx
+    return splits
 
 
 def firing_power(pre_input, tau=6):
@@ -329,7 +330,7 @@ def predictions_per_record(test_dataset,
         }
     """
 
-    predictions = model.predict(scaled_X_test)
+    predictions = model.predict(scaled_X_test) #TODO maybe we need to import scaler here and predict only for the record selected
 
     #fs = 256
     test_rec = test_dataset.filter(pl.col('unique_id')==record_id)
@@ -346,10 +347,12 @@ def predictions_per_record(test_dataset,
     tm = test_rec['timestamp']
     tm = np.array(tm) / fs + int(diff.total_seconds())
     """
-    rec_idx = test_rec.index.tolist()   #*#
-    test_lst = test_dataset.index.tolist()  #*#
-    rec_0 = test_lst.index(rec_idx[0])  #*#
-    rec_1 = test_lst.index(rec_idx[-1]) #*#
+    # rec_idx = test_rec.index.tolist()   #*#
+    # test_lst = test_dataset.index.tolist()  #*#
+    # rec_0 = test_lst.index(rec_idx[0])  #*#
+    # rec_1 = test_lst.index(rec_idx[-1]) #*# FIXED
+    rec_0 = test_rec['index'][0]
+    rec_1 = test_rec['index'][-1]
 
     # Regularize prediction output with firing power method
     reg_pred = firing_power(predictions[rec_0:rec_1 + 1], tau=tau)  #*#
@@ -364,7 +367,7 @@ def predictions_per_record(test_dataset,
     Durations = Durations.replace("[", "").replace("]", "").split(', ') if not (pd.isna(Durations)) else []
     Durations = [int(x) for x in Durations]
     """
-    true_ann = np.array(test_rec.annotation)    #*#
+    true_ann = np.array(test_rec['label'])
     pred_ann = np.array(reg_pred)
     pred_ann = np.array([1 if x >= threshold else 0 for x in pred_ann])
     OVLP = ovlp(true_ann, pred_ann, step)
@@ -586,9 +589,12 @@ def calculate_metrics(model, test_set, scaled_X_test,
             }
 
 
-def fit_and_score(model, hp, data, train_idx, test_idx,
-                  #home_path=home
-                  feature_list
+def fit_and_score(model, hp, data, 
+                  split, splits,
+                  #train_idx, test_idx,
+                  #home_path=home,
+                  index_columns
+                  #feature_list
                   ):
     """Fit a model on training data and compute its score on test data.
     Args:
@@ -608,16 +614,20 @@ def fit_and_score(model, hp, data, train_idx, test_idx,
       dictionary of the performance metrics on test data
     """
 
-    train_set = data[train_idx]
-    test_set = data[test_idx]
+    #train_set = data[train_idx]  # TODO
+    #test_set = data[test_idx]  # TODO
+    train_set = data.filter(pl.col('subject').is_in(splits[split]['train']))
+    test_set = data.filter(pl.col('subject').is_in(splits[split]['test']))
     # In inner fold, test means validation set in the corresponding CV fold.
 
     #X_train = train_set.iloc[:, 4:-1]
-    X_train = train_set.select([pl.col(col) for col in feature_list])
+    ##X_train = train_set.select([pl.col(col) for col in feature_list])
+    X_train = train_set.drop(index_columns)
     #y_train = train_set.iloc[:, -1]
     y_train = train_set.select('label')
     #X_test = test_set.iloc[:, 4:-1]
-    X_test = test_set.select([pl.col(col) for col in feature_list])
+    ##X_test = test_set.select([pl.col(col) for col in feature_list])
+    X_test = test_set.drop(index_columns)
 
     sc = StandardScaler()
     X_train = sc.fit_transform(X_train)
@@ -648,7 +658,7 @@ def fit_and_score(model, hp, data, train_idx, test_idx,
 
     metrics = calculate_metrics(model, test_set, scaled_X_test=X_test,
                                 tau=hp[4], threshold=hp[5], step=hp[3],
-                                show=False,
+                                #show=False,
                                 #home_path=home_path
                                 )
     
@@ -674,7 +684,8 @@ def fit_and_score(model, hp, data, train_idx, test_idx,
 
 def grid_search(model, hyperparams, data,
                 inner_k: int, outer_fold_idx,
-                feature_list
+                index_columns,
+                #feature_list
                 #home_path=home
                 ):
     """
@@ -724,10 +735,13 @@ def grid_search(model, hyperparams, data,
         solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]} ")
 
         scores_hp = []
-        for train_idx, val_idx in get_train_test_splits(data[['subject']], inner_k):
+        splits = get_train_test_splits(data[['subject']], inner_k)
+        for split in splits:
             metrics = fit_and_score(model, hp, data,
-                                    train_idx, val_idx,
-                                    feature_list
+                                    split, splits,
+                                    #train_idx, val_idx,
+                                    index_columns
+                                    #feature_list
                                     #home_path=home_path
                                     )
 
@@ -776,8 +790,8 @@ def grid_search(model, hyperparams, data,
             }
         )
     inner_cv_results = pl.DataFrame(inner_cv_results_rows)
-    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)
-    inner_cv_results.write_csv(s.RESULTS_DIR / f'fold_{str(outer_fold_idx + 1)}_{clf}_grid_search_results.csv')
+    #s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO, put back before ppushing
+    #inner_cv_results.write_csv(s.RESULTS_DIR / f'fold_{str(outer_fold_idx + 1)}_{clf}_grid_search_results.csv')
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
@@ -788,7 +802,8 @@ def grid_search(model, hyperparams, data,
     best_model = clone(model)
 
     #X = data.iloc[:, 4:-1]
-    X = data.select([pl.col(col) for col in feature_list])
+    ##X = data.select([pl.col(col) for col in feature_list])
+    X = data.drop(index_columns)
     #y = data.iloc[:, -1]
     y = data.select('label')
 
@@ -824,7 +839,8 @@ def grid_search(model, hyperparams, data,
 
 def cross_validate(model, hyperparams:list, data:pl.DataFrame,
                    k:int, inner_k:int,
-                   feature_group: str = 'all',
+                   index_columns:list,
+                   #feature_group: str = 'all',
                    #home_path=home
                    ):
     """Get CV score with an inner CV loop to select hyperparameters.
@@ -847,41 +863,47 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         scores : list[float]
            The scores obtained for each of the cross-validation folds
     """
-
-    if feature_group == "all":
-        feature_list = [
-            feature
-            for feature_list in s.FEATURE_GROUPS.values()
-            for feature in feature_list
-        ]
-    else:
-        feature_list = s.FEATURE_GROUPS[feature_group]
+    
+    #if feature_group == "all":
+    #    feature_list = [
+    #        feature
+    #        for feature_list in s.FEATURE_GROUPS.values()
+    #        for feature in feature_list
+    #    ]
+    #else:
+    #    feature_list = s.FEATURE_GROUPS[feature_group]
 
     results_rows = []
     df_roc_curves = pl.DataFrame([])
 
     clf = model.__class__.__name__
-    feature_list = []
+    # feature_list = []  # TODO remove
     # nonfeature_list = ['unique_id', 'subject', 'session', 'run', 'dataset_name', 'second', 'timestamp' 'label', 'training']
     
     #win_size = hyperparams[0][2]
     #step = hyperparams[0][3]
     all_scores = []
 
-    for i, (train_idx, test_idx) in enumerate(get_train_test_splits(data[['subject']], k)):
+    outer_splits = get_train_test_splits(data[['subject']], k)
+
+    for i, out_split in enumerate(outer_splits):
         
         logger.info(f"\nOuter CV loop: fold {i}")
 
-        train_val_set = data[train_idx]
-        test_set = data[test_idx]
+        #train_val_set = data[train_idx]
+        #test_set = data[test_idx]
+        train_val_set = data.filter(pl.col('subject').is_in(outer_splits[out_split]['train']))
+        test_set = data.filter(pl.col('subject').is_in(outer_splits[out_split]['test']))
+    
 
-        X_test = test_set.select([pl.col(col) for col in feature_list])
+        #X_test = test_set.select([pl.col(col) for col in feature_list])
+        X_test = test_set.drop(index_columns)
         # or exclude non-features columns
         #X_test = test_set.select([col for col in test_set.columns if col not in nonfeature_list])
 
         gridsearch_per_fold = grid_search(model, hyperparams, train_val_set, inner_k,
                                           outer_fold_idx=i,
-                                          feature_list=feature_list
+                                          index_columns=index_columns
                                           #home_path=home_path
                                           )
         best_model = gridsearch_per_fold['best_model']
@@ -889,14 +911,15 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         scaler = gridsearch_per_fold['scaler']
 
         model_name = f'fold_{i}_{clf}_{best_hp[0]}_{best_hp[1]}.sav'
-        pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb'))
+        #pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb')) # TODO
 
         X_test = scaler.transform(X_test)
         
         # Make predictions and calculate performance metrics
         metrics = calculate_metrics(best_model, test_set, scaled_X_test=X_test,
                                     tau=best_hp[4], threshold=best_hp[5], step=best_hp[3],
-                                    show=False)
+                                    #show=False
+                                    )
         
         results_rows.append(
             {
@@ -940,9 +963,9 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
 
     df_results = pl.DataFrame(results_rows)
 
-    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)
-    df_results.write_csv(s.RESULTS_DIR / "cv_results.csv")
-    df_roc_curves.write_csv(s.RESULTS_DIR / "cv_roc_curves.csv")
+    #s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO put back
+    #df_results.write_csv(s.RESULTS_DIR / "cv_results.csv")
+    #df_roc_curves.write_csv(s.RESULTS_DIR / "cv_roc_curves.csv")
     print("Results have been successfully stored.")
 
     return all_scores
