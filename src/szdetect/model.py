@@ -294,7 +294,9 @@ def ovlp(labels, predictions, step=1):
 
 def predictions_per_record(test_dataset, 
                            record_id: str,
-                           model, scaled_X_test,
+                           model,
+                           scaler, #scaled_X_test,
+                           index_columns,
                            tau=6, threshold=0.85, step=1,
                            #plot_alarms=False, show_plots=True, save_fig=None, 
                            #home_path=home
@@ -330,12 +332,16 @@ def predictions_per_record(test_dataset,
         }
     """
 
-    predictions = model.predict(scaled_X_test) #TODO maybe we need to import scaler here and predict only for the record selected
-
+    
     #fs = 256
     test_rec = test_dataset.filter(pl.col('unique_id')==record_id)
     record_name = test_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
     
+    X_test_rec = test_rec.drop(index_columns)
+    sc_X_test_rec = scaler.transform(X_test_rec)
+    pred_rec = model.predict(sc_X_test_rec) #FIXED maybe we need to import scaler here and predict only for the record selected
+
+
     logger.info(f'Analyzing EEG record : {record_name}')
     """
     meas_date = datetime.datetime.strptime(records.Record_start_date[record_row],
@@ -351,11 +357,11 @@ def predictions_per_record(test_dataset,
     # test_lst = test_dataset.index.tolist()  #*#
     # rec_0 = test_lst.index(rec_idx[0])  #*#
     # rec_1 = test_lst.index(rec_idx[-1]) #*# FIXED
-    rec_0 = test_rec['index'][0]
-    rec_1 = test_rec['index'][-1]
+    ##rec_0 = test_rec['index'][0]
+    ##rec_1 = test_rec['index'][-1]
 
     # Regularize prediction output with firing power method
-    reg_pred = firing_power(predictions[rec_0:rec_1 + 1], tau=tau)  #*#
+    reg_pred = firing_power(pred_rec, tau=tau)  #*#
 
     """
     Desc = records.Descriptions[record_row]
@@ -478,7 +484,9 @@ def predictions_per_record(test_dataset,
             'regularized_predictions': pred_ann}
 
 
-def calculate_metrics(model, test_set, scaled_X_test,
+def calculate_metrics(model, test_set,
+                      scaler,
+                      index_columns,
                       tau=6, threshold=.85, step=1,
                       #show=True, 
                       #home_path=home
@@ -489,7 +497,8 @@ def calculate_metrics(model, test_set, scaled_X_test,
     Args:
         model        : trained model for predictions
         test_set     : test or validation set to be used
-        scaled_X_test: scaled testing features
+        scaler       : fitted scaler to use to transform X_test
+        index_columns: non-feature columns of dataframe to drop
         tau          : (regularization hyperparameter) window size for averaging firing power
         threshold    : (regularization hyperparameter) minimum fraction of "full" firing power to raise an alarm
         step         : step that was used for feature extraction
@@ -500,7 +509,10 @@ def calculate_metrics(model, test_set, scaled_X_test,
     """
 
     #y_test = test_set.iloc[:, -1]
+    X_test = test_set.drop(index_columns)
+    scaled_X_test = scaler.transform(X_test)
     y_test = test_set.select('label')
+
     #latencies = []
     #TP_SZ_overlap = []
     y_hat = []
@@ -515,7 +527,8 @@ def calculate_metrics(model, test_set, scaled_X_test,
         
         # Predictions per record _______________________________________________________________________________________
         pred = predictions_per_record(test_set, record_id=rec, model=model,
-                                      scaled_X_test=scaled_X_test,
+                                      scaler=scaler, #scaled_X_test=scaled_X_test,
+                                      index_columns=index_columns,
                                       tau=tau, threshold=threshold, step=step,
                                       #plot_alarms=show, show_plots=show,
                                       #home_path=home_path
@@ -627,11 +640,11 @@ def fit_and_score(model, hp, data,
     y_train = train_set.select('label')
     #X_test = test_set.iloc[:, 4:-1]
     ##X_test = test_set.select([pl.col(col) for col in feature_list])
-    X_test = test_set.drop(index_columns)
+    #X_test = test_set.drop(index_columns)
 
     sc = StandardScaler()
     X_train = sc.fit_transform(X_train)
-    X_test = sc.transform(X_test)
+    #X_test = sc.transform(X_test)
 
     model = clone(model)
     if model.__class__.__name__ == 'SVC':
@@ -656,7 +669,9 @@ def fit_and_score(model, hp, data,
     model.set_params(**params)
     model.fit(X_train, y_train)
 
-    metrics = calculate_metrics(model, test_set, scaled_X_test=X_test,
+    metrics = calculate_metrics(model, test_set,
+                                scaler=sc, 
+                                index_columns=index_columns,
                                 tau=hp[4], threshold=hp[5], step=hp[3],
                                 #show=False,
                                 #home_path=home_path
@@ -916,7 +931,9 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         X_test = scaler.transform(X_test)
         
         # Make predictions and calculate performance metrics
-        metrics = calculate_metrics(best_model, test_set, scaled_X_test=X_test,
+        metrics = calculate_metrics(best_model, test_set,
+                                    scaler=scaler, #scaled_X_test=X_test,
+                                    index_columns=index_columns,
                                     tau=best_hp[4], threshold=best_hp[5], step=best_hp[3],
                                     #show=False
                                     )

@@ -10,14 +10,14 @@ from pathlib import Path
 from szdetect import pull_features as pf
 from szdetect import model as mod
 
-models = mod.parse_models("models.yaml")
+models = mod.parse_models("../models.yaml")
 
 models_inst = mod.init_models(models['models'], mod.Model)
 
 
 df = pf.pull_features(
-    feature_dir=Path('./tests/test_data/features'),
-    label_file='./tests/test_data/labels.parquet',
+    feature_dir=Path('./test_data/features'),
+    label_file='./test_data/labels.parquet',
     feature_group="efficiency",
     train_only=True)
 
@@ -104,11 +104,12 @@ train_set = train_val_set.filter(pl.col('subject').is_in(inner_splits[innersplit
 val_set = train_val_set.filter(pl.col('subject').is_in(inner_splits[innersplit]['test']))
 
 X_train = train_set.drop(index_columns)
-X_val = val_set.drop(index_columns)
 y_train = train_set.select('label')
+X_val = val_set.drop(index_columns)
+y_val = val_set.select('label')
 #just an example to get data with 2 classes
-for k in range(2,20):
-    y_train[k,0] = True
+#for k in range(2,20):
+#   y_train[k,0] = True
 
 
 
@@ -130,20 +131,27 @@ elif model.__class__.__name__ == 'XGBClassifier':
 in_model.set_params(**params)
 in_model.fit(X_train, y_train)
 
-y_val = val_set.select('label')
+
 y_hat = []
 ovlp_precision, ovlp_recall, ovlp_f1 = [], [], []
 ovlp_FA, ovlp_MA = 0, 0
 
 rec = val_set["unique_id"].unique()[0]
 
-pred_val = in_model.predict(X_val)                  
+#pred_val = in_model.predict(X_val)                  
 val_rec = val_set.filter(pl.col('unique_id')==rec)
 record_name = val_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
-rec_0 = val_rec['index'][0]
-rec_1 = val_rec['index'][-1]
 
-reg_pred = mod.firing_power(pred_val[rec_0:rec_1 + 1], tau=tau_range[0])
+X_val_rec = val_rec.drop(index_columns)
+X_val_rec = sc.transform(X_val_rec)
+
+y_pred_val_rec = in_model.predict(X_val_rec)  
+
+
+#rec_0 = val_rec['index'][0]
+#rec_1 = val_rec['index'][-1]
+
+reg_pred = mod.firing_power(y_pred_val_rec, tau=tau_range[0])
 
 step = 1
 
