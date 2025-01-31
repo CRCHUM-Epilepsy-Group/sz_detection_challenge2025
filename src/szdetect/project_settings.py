@@ -22,7 +22,7 @@ BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Labels
 LABELS_FILE = Path(config["labels"]["labels_file"])
-LABELS_FILE.parent.mkdir(parents=True, exist_ok=True)
+LABELS_FILE.mkdir(parents=True, exist_ok=True)
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
@@ -32,6 +32,7 @@ FEATURES, FRAMEWORKS = parse_featureextraction_config(
 FEATURES_DIR = Path(config["features"]["features_dir"])
 FEATURES_DIR.mkdir(parents=True, exist_ok=True)
 NUM_WORKERS = config["features"]["num_workers"]
+OVERWRITE_FEATURES = config["features"]["overwrite"]
 
 PREPROCESSING_KWARGS = config["preprocessing"]
 # HACK to replace -1 with None (not allowed in TOML)
