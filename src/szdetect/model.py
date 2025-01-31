@@ -770,11 +770,11 @@ def grid_search(model, hyperparams, data,
             recall_hp.append(metrics['ovlp_recall'])
             f1_ovlp_hp.append(metrics['ovlp_f1'])
             roc_auc_hp.append(metrics['roc_auc_score'])
-            latencies_hp.append(np.nanmean(np.array(metrics['latencies'])))
+            #latencies_hp.append(np.nanmean(np.array(metrics['latencies'])))
             #TP_SZ_overlap_hp.append(np.nanmean(np.array(metrics['TP_SZ_overlap'])))
-            far_hp.append(np.nanmean(np.array(metrics['FAR'])))
-            tiw_hp.append(np.nanmean(np.array(metrics['Time_in_warning'])))
-            percentage_tiw_hp.append(np.nanmean(np.array(metrics['percentage_tiw'])))
+            #far_hp.append(np.nanmean(np.array(metrics['FAR'])))
+            #tiw_hp.append(np.nanmean(np.array(metrics['Time_in_warning'])))
+            #percentage_tiw_hp.append(np.nanmean(np.array(metrics['percentage_tiw'])))
 
         # NOTE: scoring used for hyperparameter tuning is f1-score calculated as sample-based.
         # DO NOT use regularized f1-score to optimize hyperparameter search
@@ -790,7 +790,7 @@ def grid_search(model, hyperparams, data,
                 #'step': hp[3],
                 'tau': hp[4],
                 'threshold': hp[5],
-                'avg_latency': np.nanmean(latencies_hp),
+                #'avg_latency': np.nanmean(latencies_hp),
                 'total_false_alarms': np.nanmean(FA_hp),
                 'total_missed_alarms': np.nanmean(MA_hp),
                 'f1_score_regularized': np.nanmean(scores_hp),
@@ -799,9 +799,9 @@ def grid_search(model, hyperparams, data,
                 'precision_ovlp': np.nanmean(precision_hp),
                 'recall_ovlp': np.nanmean(recall_hp),
                 #'avg_TP_SZ_overlap': np.nanmean(TP_SZ_overlap_hp),
-                'avg_far': np.nanmean(far_hp),
-                'avg_tiw': np.nanmean(tiw_hp),
-                'avg_percentage_tiw': np.nanmean(percentage_tiw_hp)
+                #'avg_far': np.nanmean(far_hp),
+                #'avg_tiw': np.nanmean(tiw_hp),
+                #'avg_percentage_tiw': np.nanmean(percentage_tiw_hp)
             }
         )
     inner_cv_results = pl.DataFrame(inner_cv_results_rows)
@@ -950,7 +950,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             #'step': best_hp[3],
             'tau': best_hp[4],
             'threshold': best_hp[5],
-            'avg_latency': np.nanmean(np.array(metrics['latencies'])),
+            #'avg_latency': np.nanmean(np.array(metrics['latencies'])),
             'total_false_alarms': metrics['ovlp_FA'],
             'total_missed_alarms': metrics['ovlp_MA'],
             'f1_score_ovlp': metrics['ovlp_f1'],
@@ -958,10 +958,10 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             'recall_ovlp': metrics['ovlp_recall'],
             'f1_score_regularized': metrics['f1_score_regularized'],
             'roc_auc_score': metrics['roc_auc_score'],
-            'latencies': metrics['latencies'],
-            'FAR_per_day': metrics['FAR'],
-            'Time_in_warning': metrics['Time_in_warning'],
-            'percentage_tiw': metrics['percentage_tiw'],
+            #'latencies': metrics['latencies'],
+            #'FAR_per_day': metrics['FAR'],
+            #'Time_in_warning': metrics['Time_in_warning'],
+            #'percentage_tiw': metrics['percentage_tiw'],
             }
         )
 
