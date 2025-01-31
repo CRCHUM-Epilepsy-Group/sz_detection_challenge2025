@@ -19,6 +19,7 @@ features_config = "features_config.yaml"
 features_dir = "data/cleaned/features/"
 features_db_file = "data/cleaned/features.db"
 num_workers = 1
+overwrite = true
 
 [preprocessing]
 # -1 will be converted to None
