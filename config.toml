@@ -20,6 +20,7 @@ features_dir = "data/cleaned/features/"
 features_db_file = "data/cleaned/features.db"
 num_workers = 1
 overwrite = true
+log_dir = "logs/features"
 
 [preprocessing]
 # -1 will be converted to None

@@ -30,15 +30,15 @@ def feature_extraction_pipeline(
 
     if parquet_sink.exists() and not s.OVERWRITE_FEATURES:
         print(f"Features already extracted for {filename}")
-    
+
     try:
         eeg = pp.read_edf(path, **preprocessing_kwargs["read_edf"])
         # Normalize EEG
         eeg = pp.filter_eeg(eeg, **preprocessing_kwargs["filter_eeg"])
         eeg = eeg.apply_function(pp.normalize_eeg)
         eeg = segmenting_function(eeg, **preprocessing_kwargs["segment_eeg"])
-        extractor = FeatureExtractor(features, frameworks)
-        features = extractor.extract_feature(eeg)
+        extractor = FeatureExtractor(features, frameworks, log_dir=s.FEATURE_LOG_DIR)
+        features = extractor.extract_feature(eeg, filename)
 
         features = features.with_columns(
             dataset_name=pl.lit(dataset_name),
