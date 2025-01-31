@@ -8,24 +8,17 @@ features:
     - name: linelength
       function: univariate.line_length
       params:
-    - name: corr_dim
-      function: univariate.corr_dim
-      params:
-        embed_dim: 3
   simple:
     - name: band_power
       function: univariate.band_power
       params:
-        band_ranges:
+        freqs:
           - - !!python/tuple [1, 4]
             - !!python/tuple [4, 8]
             - !!python/tuple [8, 13]
             - !!python/tuple [13, 25]
             - !!python/tuple [25, 40]
             - !!python/tuple [40, 80]
-    - name: peak_alpha
-      function: univariate.peak_alpha
-      params:
   connectivity:
     - name: betweenness
       function: szdetect.centrality_features.betweenness
@@ -69,32 +62,33 @@ features:
     - name: eigenvalues
       function: szdetect.connectivity.eigenvalues
       params:
-    # - name: upper_right_triangle
-    #   function: szdetect.connectivity.upper_right_triangle  # INVALID SHAPE
-    #   params:
 
 frameworks:
   tf_decomposition:
-    - name: dwt
-      function: timefrequency.dwt_eeg
+    - name: cwt
+      function: timefrequency.cwt_eeg
       params:
-        wavelet: sym5
-        max_level: 6
+        freqs:
+          - - !!python/tuple [1, 4]
+            - !!python/tuple [4, 8]
+            - !!python/tuple [8, 13]
+            - !!python/tuple [13, 25]
+            - !!python/tuple [25, 40]
+            - !!python/tuple [3, 40]
   simple:
     - name: simple
       function: null
       params: null
   connectivity:
     - name: corr
-      function: connectivity.spectral_connectivity
+      function: connectivity.connectivity_from_coeff
       params:
         freqs:
-          - !!python/tuple [1, 4]
-          - !!python/tuple [4, 8]
-          - !!python/tuple [8, 13]
-          - !!python/tuple [13, 25]
-          - !!python/tuple [25, 40]
-          - !!python/tuple [40, 80]
-          - !!python/tuple [3, 40]
+          - - !!python/tuple [1, 4]
+            - !!python/tuple [4, 8]
+            - !!python/tuple [8, 13]
+            - !!python/tuple [13, 25]
+            - !!python/tuple [25, 40]
+            - !!python/tuple [3, 40]
         method: corr
         wavelet: cmor1.5-1.0
