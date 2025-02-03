@@ -261,16 +261,25 @@ def ovlp(labels, predictions, step=1):
             fp_events.remove(s)
         except AssertionError:
             logger.error(f'ERROR {AssertionError} sz event {s} not in list fp_events {fp_events}',
-                     exc_info=True) 
+                     exc_info=True)
+            logger.info(f'sz event {s} not in list fp_events')
+            logger.info(f'sz_events = {sz_events}')
+            logger.info(f'fp_events = {fp_events}')
+            logger.info(f'detected_sz = {detected_sz}')
+            logger.info(f'missed_sz = {missed_sz}')
+            logger.info(f'pred_events = {pred_events}')
+            logger.info(f'true_events = {true_events}')
             print(f'sz event {s} not in list fp_events')
             print(f'sz_events = {sz_events}')
             print(f'fp_events = {fp_events}')
             print(f'detected_sz = {detected_sz}')
+            print(f'missed_sz = {missed_sz}')
             print(f'pred_events = {pred_events}')
             print(f'true_events = {true_events}')
     TP = len(sz_events)
     FN = len(missed_sz)
     FP = len(fp_events)
+    print(f'TP={TP}, FP={FP}, FN={FN}')
 
     try:
         recall = TP / (TP + FN)
@@ -899,6 +908,8 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     #    ]
     #else:
     #    feature_list = s.FEATURE_GROUPS[feature_group]
+    t1 = datetime.datetime.now()
+    tmp = datetime.datetime.strftime(t1, '%Y%m%d_%H%M%S')
 
     results_rows = []
     df_roc_curves = pl.DataFrame(
