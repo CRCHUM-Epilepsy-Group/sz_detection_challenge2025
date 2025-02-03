@@ -16,11 +16,11 @@ labels_file = "data/cleaned/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
-features_dir = "data/cleaned/features_v2/"
+features_dir = "data/cleaned/features_v3/"
 features_db_file = "data/cleaned/features.db"
-num_workers = 16
+num_workers = 4
 overwrite = false
-log_dir = "logs/features"
+log_dir = "logs/features_v3"
 
 [preprocessing]
 # -1 will be converted to None
@@ -28,8 +28,8 @@ read_edf.channels = -1 # Default to the 19 channels in 10-20 system
 filter_eeg.l_freq = 1
 filter_eeg.h_freq = 99
 filter_eeg.notch = -1
-segment_eeg.window_duration = 12
-segment_eeg.overlap = 4
+segment_eeg.window_duration = 10
+segment_eeg.overlap = 10
 
 [runtime]
 debug = false

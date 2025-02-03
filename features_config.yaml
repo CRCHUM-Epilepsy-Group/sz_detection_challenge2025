@@ -13,14 +13,14 @@ features:
       function: univariate.band_power
       params:
         freqs:
-          - - !!python/tuple [1, 4]
+          - - !!python/tuple [1, 2]
+            - !!python/tuple [2, 4]
             - !!python/tuple [4, 6]
             - !!python/tuple [6, 8]
             - !!python/tuple [8, 13]
-            - !!python/tuple [13, 20]
-            - !!python/tuple [20, 35]
-            - !!python/tuple [35, 50]
-            - !!python/tuple [3, 40]
+            - !!python/tuple [13, 30]
+            - !!python/tuple [30, 50]
+            - !!python/tuple [50, 80]
   connectivity:
     - name: betweenness
       function: szdetect.centrality_features.betweenness
@@ -71,13 +71,12 @@ frameworks:
       function: timefrequency.cwt_eeg
       params:
         freqs:
-          - - !!python/tuple [1, 4]
-            - !!python/tuple [4, 6]
+          - - !!python/tuple [4, 6]
             - !!python/tuple [6, 8]
             - !!python/tuple [8, 13]
             - !!python/tuple [13, 20]
-            - !!python/tuple [20, 35]
-            - !!python/tuple [35, 50]
+            - !!python/tuple [20, 30]
+            - !!python/tuple [30, 50]
             - !!python/tuple [3, 40]
   simple:
     - name: simple
@@ -88,13 +87,12 @@ frameworks:
       function: connectivity.connectivity_from_coeff
       params:
         freqs:
-          - - !!python/tuple [1, 4]
-            - !!python/tuple [4, 6]
+          - - !!python/tuple [4, 6]
             - !!python/tuple [6, 8]
             - !!python/tuple [8, 13]
             - !!python/tuple [13, 20]
-            - !!python/tuple [20, 35]
-            - !!python/tuple [35, 50]
+            - !!python/tuple [20, 30]
+            - !!python/tuple [30, 50]
             - !!python/tuple [3, 40]
         method: corr
         wavelet: cmor1.5-1.0
