@@ -28,7 +28,7 @@ filter_eeg.h_freq = 99
 filter_eeg.notch_filter = -1
 resample_eeg.sfreq = 200
 segment_eeg.window_duration = 10
-segment_eeg.overlap = 1
+segment_eeg.step_size = 10
 
 [results]
 results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
