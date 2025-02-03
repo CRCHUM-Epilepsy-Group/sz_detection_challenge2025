@@ -89,7 +89,7 @@ def pull_features(
         raise NotImplementedError
 
     feature_rel = duckdb.read_parquet(feature_files)
-    label_rel = duckdb.read_parquet(label_file)
+    label_rel = duckdb.read_parquet(str(label_file))
 
     if feature_group == "all":
         feature_list = [
@@ -105,7 +105,17 @@ def pull_features(
     )
 
     # TODO: average over brain region if brain_region is not None
-    query = f"""SELECT f.*, l.label
+    query = f"""SELECT
+                    f.dataset_name,
+                    f.region_side,
+                    f.subject,
+                    f.session,
+                    f.run,
+                    f.timestamp,
+                    f.feature,
+                    f.freqs,
+                    AVG(f.value) AS value,
+                    l.label
                 FROM feature_rel AS f
                 JOIN label_rel AS l
                     ON f.subject = l.subject 
@@ -113,6 +123,16 @@ def pull_features(
                     AND f.run = l.run 
                     AND f.timestamp = l.timestamp
                 {where_clause}
+                GROUP BY
+                    f.dataset_name,
+                    f.subject, 
+                    f.session, 
+                    f.run, 
+                    f.timestamp, 
+                    f.feature, 
+                    f.freqs, 
+                    f.region_side, 
+                    l.label
             """
     df = duckdb.execute(query, [feature_list]).pl()
 
