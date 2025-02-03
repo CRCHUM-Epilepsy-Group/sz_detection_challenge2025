@@ -8,6 +8,7 @@ from sklearn.svm import SVC
 from pathlib import Path
 from szdetect import pull_features as pf
 from szdetect import model as mod
+from szdetect import project_settings as s
 
 models = mod.parse_models("models.yaml")
 
@@ -15,9 +16,9 @@ models_inst = mod.init_models(models['models'], mod.Model)
 
 
 df = pf.pull_features(
-    feature_dir=Path('./tests/test_data/features'),
-    label_file='./tests/test_data/labels.parquet',
-    feature_group="efficiency",
+    feature_dir=s.FEATURES_DIR,
+    label_file=s.LABELS_FILE,
+    feature_group="all",
     train_only=True)
 
 index_col = ['epoch', 'timestamp', 'dataset_name', 'subject',
@@ -48,8 +49,6 @@ print('long to wide pivot succeeded.')
 
 tau_range = [4, 6]
 thresh_range = [0.65, 0.75]
-max_depth = [11]
-min_child_weight = [7]
 # SVM ----------------------------------------
 kernel = ['linear', 'rbf']
 c = [0.001, 0.01, 0.1, 1]
@@ -57,8 +56,8 @@ c = [0.001, 0.01, 0.1, 1]
 max_depth = [7, 9, 11]
 min_child_weight = [5, 7]
 # --------------------------------------------
-model = SVC()
-#model = xgb.XGBClassifier()
+#model = SVC()
+model = xgb.XGBClassifier()
 
 def f(x):
     return {'XGBClassifier': (max_depth, min_child_weight),
@@ -66,16 +65,15 @@ def f(x):
             }[x]
 
 
-
+epoch_size = s.PREPROCESSING_KWARGS['segment_eeg']['window_duration']
+step = s.PREPROCESSING_KWARGS['segment_eeg']['step_size']
 (hyperparam1, hyperparam2) = f(model.__class__.__name__)
-combin = [hyperparam1, hyperparam2, [10], [1], tau_range, thresh_range]
+combin = [hyperparam1, hyperparam2, [epoch_size], [step], tau_range, thresh_range]
 all_combinations = list(itertools.product(*combin))
-
-outer_k, inner_k = 3, 2
 
 index_col.append('index')
 
-outer_k, inner_k = 3, 2
+outer_k, inner_k = 2, 2
 print('Init cross validation')
 scores = mod.cross_validate(model = model,
                             hyperparams=all_combinations,
