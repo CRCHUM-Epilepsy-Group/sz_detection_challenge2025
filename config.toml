@@ -31,10 +31,12 @@ segment_eeg.window_duration = 10
 segment_eeg.overlap = 1
 
 [results]
-results_dir = "temp/results"
+results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
+#results_dir = "temp/results"
 
 [runtime]
 debug = true
 
 [logs]
 log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
+#log_file = "temp/logs/test_ml_run.log"

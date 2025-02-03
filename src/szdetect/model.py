@@ -4,6 +4,7 @@ from pathlib import Path
 #import pandas as pd
 import numpy as np
 import polars as pl
+import pandas as pd
 import scipy.stats as stats
 import warnings
 import logging
@@ -35,10 +36,10 @@ from skopt import space
 # from sklearn.impute import IterativeImputer
 
 #from eegml import featureengineering as fe
-######from szdetect import project_settings as s
+from szdetect import project_settings as s
 
-#s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
-#logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
+s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
+logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
 logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
@@ -255,7 +256,18 @@ def ovlp(labels, predictions, step=1):
     
     fp_events = list(pred_events.keys())
     for s in sz_events:
-        fp_events.remove(s)
+        try: 
+            assert s in fp_events
+            fp_events.remove(s)
+        except AssertionError:
+            logger.error(f'ERROR {AssertionError} sz event {s} not in list fp_events {fp_events}',
+                     exc_info=True) 
+            print(f'sz event {s} not in list fp_events')
+            print(f'sz_events = {sz_events}')
+            print(f'fp_events = {fp_events}')
+            print(f'detected_sz = {detected_sz}')
+            print(f'pred_events = {pred_events}')
+            print(f'true_events = {true_events}')
     TP = len(sz_events)
     FN = len(missed_sz)
     FP = len(fp_events)
@@ -657,7 +669,7 @@ def fit_and_score(model, hp, data,
         params = {'algorithm': hp[0], 'n_neighbors': hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                  'scale_pos_weight': 3000, 'max_delta_step': 1,
+                  'scale_pos_weight': 2, 'max_delta_step': 1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
         # NOTE: The ratio neg/pos can be recalculate in each fold and used for scale_pos_weight 
         # This could be optimized, but I doubt this will have a significant impact on results
@@ -668,6 +680,7 @@ def fit_and_score(model, hp, data,
 
     model.set_params(**params)
     model.fit(X_train, y_train)
+    print('Training ... ')
 
     metrics = calculate_metrics(model, test_set,
                                 scaler=sc, 
@@ -805,8 +818,9 @@ def grid_search(model, hyperparams, data,
             }
         )
     inner_cv_results = pl.DataFrame(inner_cv_results_rows)
-    #s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO, put back before ppushing
-    #inner_cv_results.write_csv(s.RESULTS_DIR / f'fold_{str(outer_fold_idx + 1)}_{clf}_grid_search_results.csv')
+    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  
+    inner_cv_results_pd = inner_cv_results.to_pandas()
+    inner_cv_results_pd.to_csv(s.RESULTS_DIR / f'fold_{str(outer_fold_idx + 1)}_{clf}_grid_search_results.csv', index=False)
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
@@ -835,7 +849,7 @@ def grid_search(model, hyperparams, data,
         params = {'algorithm': best_hp[0], 'n_neighbors': best_hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
-                  'scale_pos_weight': 3000, 'max_delta_step': 1,
+                  'scale_pos_weight': 2, 'max_delta_step': 1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced with 1h non-seizure data for approx. 2min of seizure data
@@ -889,7 +903,20 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     #    feature_list = s.FEATURE_GROUPS[feature_group]
 
     results_rows = []
-    df_roc_curves = pl.DataFrame([])
+    df_roc_curves = pl.DataFrame(
+    {
+        "fold": [], 
+        "roc_fpr": [], 
+        "roc_tpr": [], 
+        "roc_thresholds": []
+    }, 
+    schema={
+        "fold": pl.Float32,
+        "roc_fpr": pl.Float32,
+        "roc_tpr": pl.Float32,
+        "roc_thresholds": pl.Float32
+        }
+    )
 
     clf = model.__class__.__name__
     # feature_list = []  # TODO remove
@@ -902,7 +929,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     outer_splits = get_train_test_splits(data[['subject']], k)
 
     for i, out_split in enumerate(outer_splits):
-        
+        print(f"\nOuter CV loop: fold {i}")
         logger.info(f"\nOuter CV loop: fold {i}")
 
         #train_val_set = data[train_idx]
@@ -926,7 +953,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         scaler = gridsearch_per_fold['scaler']
 
         model_name = f'fold_{i}_{clf}_{best_hp[0]}_{best_hp[1]}.sav'
-        #pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb')) # TODO
+        pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb')) # TODO
 
         X_test = scaler.transform(X_test)
         
@@ -967,12 +994,18 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
 
         df_roc = pl.DataFrame(
             {
-                'fold': np.ones(len(metrics['roc_fpr'])) * (i),
+                'fold': np.ones(len(metrics['roc_fpr']), dtype=np.float32) * (i),
                 'roc_fpr': metrics['roc_fpr'],
                 'roc_tpr': metrics['roc_tpr'],
                 'roc_thresholds': metrics['roc_thresholds']
             }
         )
+        df_roc = df_roc.with_columns(
+            pl.col("fold").cast(pl.Float32),
+            pl.col("roc_fpr").cast(pl.Float32),
+            pl.col("roc_tpr").cast(pl.Float32),
+            pl.col("roc_thresholds").cast(pl.Float32)
+            )
 
         logger.info(f"Outer CV loop: finished fold {i}, f1-score={metrics['ovlp_f1']}%, ROC-AUC={metrics['roc_auc_score']}")
         all_scores.append(metrics['ovlp_f1'])
@@ -980,9 +1013,11 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
 
     df_results = pl.DataFrame(results_rows)
 
-    #s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO put back
-    #df_results.write_csv(s.RESULTS_DIR / "cv_results.csv")
-    #df_roc_curves.write_csv(s.RESULTS_DIR / "cv_roc_curves.csv")
+    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO put back
+    df_results_pd = df_results.to_pandas()
+    df_results_pd.to_csv(s.RESULTS_DIR / "cv_results.csv", index=False)
+    df_roc_curves_pd = df_roc_curves.to_pandas()
+    df_roc_curves_pd.to_csv(s.RESULTS_DIR / "cv_roc_curves.csv", index=False)
     print("Results have been successfully stored.")
 
     return all_scores
