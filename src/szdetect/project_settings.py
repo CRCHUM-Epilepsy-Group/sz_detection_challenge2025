@@ -21,8 +21,8 @@ BIDS_DB_FILES_DIR = Path(config["utilities"]["bids_db_files_dir"])
 BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Labels
-LABELS_FILE = Path(config["labels"]["labels_file"])
-LABELS_FILE.parent.mkdir(parents=True, exist_ok=True)
+LABELS_FILE = config["labels"]["labels_file"]
+Path(LABELS_FILE).parent.mkdir(parents=True, exist_ok=True)
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
