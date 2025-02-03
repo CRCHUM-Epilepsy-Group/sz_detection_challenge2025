@@ -849,14 +849,12 @@ def grid_search(model, hyperparams, data,
         params = {'algorithm': best_hp[0], 'n_neighbors': best_hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
-                  'scale_pos_weight': 2, 'max_delta_step': 1,
+                  'scale_pos_weight': 13, 'max_delta_step': 1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
-    # NOTE: Since our dataset is imbalanced with 1h non-seizure data for approx. 2min of seizure data
-    # we empirically set the XGBoost parameter scale_pos_weight to 3000 to control the balance of classes
+    # NOTE: Since our dataset is imbalanced 
     # Typical value to consider is sum(negative instances) / sum(positive instances)
-    # Other parameters are set empirically to reduce overfitting and avoid underfiting
-    # You could recalibrate scale_pos_weight in each fold
+    # testing on features_v3, ratio is 25225 sneg : 1983 spos =(approx.) 13
 
     else:
         params = {}
