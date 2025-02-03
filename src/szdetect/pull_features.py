@@ -35,6 +35,7 @@ def pull_features(
     label_file: Path | str,
     feature_group: str = "all",
     train_only: bool = True,
+    inference: bool = False,
 ):
     """
     Extracts and filters features from Parquet files and joins them with labels.
@@ -83,6 +84,10 @@ def pull_features(
     feature_dir = Path(feature_dir)
     feature_files = [str(f) for f in feature_dir.glob("*.parquet")]
 
+    # TODO: add parameter to avoid loading features (inference = True)
+    if inference:
+        raise NotImplementedError
+
     feature_rel = duckdb.read_parquet(feature_files)
     label_rel = duckdb.read_parquet(label_file)
 
@@ -99,6 +104,7 @@ def pull_features(
         " AND l.training = TRUE" if train_only else ""
     )
 
+    # TODO: average over brain region if brain_region is not None
     query = f"""SELECT f.*, l.label
                 FROM feature_rel AS f
                 JOIN label_rel AS l

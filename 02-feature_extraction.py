@@ -8,6 +8,7 @@ from epileptology.features.featureextraction import FeatureExtractor
 import epileptology.preprocessing as pp
 from bids import BIDSLayout
 from szdetect import project_settings as s
+from pathlib import Path
 
 
 def feature_extraction_pipeline(
@@ -18,15 +19,15 @@ def feature_extraction_pipeline(
     preprocessing_kwargs,
 ):
     dataset_name, path = iterated
-    extraction_start_time = time.perf_counter()
 
-    filename = path.name
     file_entities = parse_file_entities(path)
     subject = file_entities["subject"]
     session = file_entities["session"]
     run = file_entities["run"]
     unique_id = f"{dataset_name}_{subject}_{session}_{run}"
     parquet_sink = s.FEATURES_DIR / f"{unique_id}.parquet"
+
+    filename = Path(path).name
 
     if parquet_sink.exists() and not s.OVERWRITE_FEATURES:
         print(f"Features already extracted for {filename}")
@@ -48,10 +49,7 @@ def feature_extraction_pipeline(
             unique_id=pl.lit(unique_id),
             second=pl.col("epoch").cast(pl.Int32),
         )
-        print("Writing parquet to file")
         features.write_parquet(parquet_sink)
-        extraction_duration = (time.perf_counter() - extraction_start_time) / 60
-        print(f"Features extracted for {unique_id} in {extraction_duration:.2f}m")
 
         return 1
 
@@ -92,8 +90,8 @@ def main():
         segmenting_function=pp.segment_overlapping_windows,
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
         chunksize=4,
-        console=console,
         n_jobs=len(name_file_pairs),
+        console=console,
     )
 
 

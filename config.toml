@@ -5,7 +5,7 @@ name = 'sz_detection_challenge'
 [datasets]
 # Paths to BIDS datasets
 tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
-chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
+# chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
 siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
 
 [utilities]
@@ -16,10 +16,10 @@ labels_file = "data/cleaned/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
-features_dir = "data/cleaned/features/"
+features_dir = "data/cleaned/features_v2/"
 features_db_file = "data/cleaned/features.db"
-num_workers = 1
-overwrite = true
+num_workers = 16
+overwrite = false
 log_dir = "logs/features"
 
 [preprocessing]
@@ -27,11 +27,10 @@ log_dir = "logs/features"
 read_edf.channels = -1 # Default to the 19 channels in 10-20 system
 filter_eeg.l_freq = 1
 filter_eeg.h_freq = 99
-filter_eeg.notch_filter = -1
-resample_eeg.sfreq = 200
-segment_eeg.window_duration = 10
-segment_eeg.overlap = 1
+filter_eeg.notch = -1
+segment_eeg.window_duration = 12
+segment_eeg.overlap = 4
 
 [runtime]
-debug = true
+debug = false
 
