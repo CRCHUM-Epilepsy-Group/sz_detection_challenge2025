@@ -232,7 +232,7 @@ def ovlp(labels, predictions, step=1):
         """
     true_indexes = np.array([i for i, x in enumerate(labels) if x == 1])
     pred_indexes = np.array([i for i, x in enumerate(predictions) if x == 1])
-    th = int(90 / step)
+    th = int(20 / step)
     # NOTE: According to the evalutaion of the challenge, events seperated by <90s are merged.
 
     # seizures within 90s of each other are attributed to the same true event
