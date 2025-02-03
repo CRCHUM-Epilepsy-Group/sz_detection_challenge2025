@@ -7,7 +7,7 @@ from szdetect import project_settings as s
 df = pf.pull_features(
     feature_dir=s.FEATURES_DIR,
     label_file=s.LABELS_FILE,
-    feature_group="efficiency",
+    feature_group="all",
     train_only=True)
 
 print('Features pulled')
@@ -24,9 +24,8 @@ long_df = long_df.with_columns([
     pl.col(column).fill_null('missing').alias(column) for column in feature_col
 ])
 
-long_df = long_df.filter(pl.col('feature') !='band_power')
-
-print('band_power features filtered out')
+#long_df = long_df.filter(pl.col('feature') !='band_power')
+#print('band_power features filtered out')
 
 wide_df = long_df.pivot(
     values='value', 
