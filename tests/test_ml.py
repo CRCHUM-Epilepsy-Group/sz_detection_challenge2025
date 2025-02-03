@@ -58,8 +58,8 @@ c = [0.001, 0.01, 0.1, 1]
 max_depth = [7, 9, 11]
 min_child_weight = [5, 7]
 # --------------------------------------------
-model = SVC()
-#model = xgb.XGBClassifier()
+#model = SVC()
+model = xgb.XGBClassifier()
 
 def f(x):
     return {'XGBClassifier': (max_depth, min_child_weight),
