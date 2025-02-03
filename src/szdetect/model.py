@@ -669,12 +669,12 @@ def fit_and_score(model, hp, data,
         params = {'algorithm': hp[0], 'n_neighbors': hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                  'scale_pos_weight': 2, 'max_delta_step': 1,
+                  'scale_pos_weight': 13, 'max_delta_step': 1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
-        # NOTE: The ratio neg/pos can be recalculate in each fold and used for scale_pos_weight 
-        # This could be optimized, but I doubt this will have a significant impact on results
-    #   testing with 1 hour preictal, ratio was 33 sneg : 1spos
-    #   testing on all data, ratio is 5696978 sneg : 1949 spos =(approx.) 2923
+    # TODO :find the scale pos weight for EEG datasets
+    # NOTE: Since our dataset is imbalanced 
+    # Typical value to consider is sum(negative instances) / sum(positive instances)
+    # testing on features_v3, ratio is 25225 sneg : 1983 spos =(approx.) 13
     else:
         params = {}
 
@@ -820,12 +820,12 @@ def grid_search(model, hyperparams, data,
     inner_cv_results = pl.DataFrame(inner_cv_results_rows)
     s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  
     inner_cv_results_pd = inner_cv_results.to_pandas()
-    inner_cv_results_pd.to_csv(s.RESULTS_DIR / f'fold_{str(outer_fold_idx + 1)}_{clf}_grid_search_results.csv', index=False)
+    inner_cv_results_pd.to_csv(s.RESULTS_DIR / f'fold_{str(outer_fold_idx)}_{clf}_grid_search_results.csv', index=False)
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
     best_hp = hyperparams[np.argmax(all_scores)]
-    logger.info(f'Outer fold {outer_fold_idx+1} grid search finished')
+    logger.info(f'Outer fold {outer_fold_idx} grid search finished')
     logger.info(f'\t ** Grid search: keep best hyperparameters combination = {best_hp} **')
     logger.info(f'\t ** Highest f1-score (regularized) from the grid search is {np.max(all_scores)}')
     best_model = clone(model)
@@ -963,16 +963,19 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
                                     #show=False
                                     )
         
+        train_subjects = "; ".join(map(str, train_val_set.select(pl.col("subject").unique()).to_series().to_list()))
+        test_subjects = "; ".join(map(str, test_set.select(pl.col("subject").unique()).to_series().to_list()))
+
         results_rows.append(
             {
             'fold': i,
-            'train_subject': train_val_set.select(pl.col("subject").unique()).to_series().to_list(),
-            'test_subject': test_set.select(pl.col("subject").unique()).to_series().to_list(),
+            'train_subject': train_subjects,
+            'test_subject': test_subjects,
             'model': model_name,
             'max_depth': best_hp[0],
             'min_child_weight': best_hp[1],
-            #'win_size': best_hp[2],
-            #'step': best_hp[3],
+            'win_size': best_hp[2],
+            'step': best_hp[3],
             'tau': best_hp[4],
             'threshold': best_hp[5],
             #'avg_latency': np.nanmean(np.array(metrics['latencies'])),
