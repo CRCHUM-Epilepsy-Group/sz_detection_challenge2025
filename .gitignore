@@ -9,3 +9,4 @@ __pycache__/
 /data/**
 /logs/**
 launch.json
+copy_recent_files.sh
