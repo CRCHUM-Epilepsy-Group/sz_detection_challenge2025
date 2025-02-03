@@ -45,13 +45,13 @@ print('long to wide pivot succeeded.')
 
 
 
-tau_range = [4, 6]
-thresh_range = [0.65, 0.75]
+tau_range = [4]
+thresh_range = [0.65]
 # SVM ----------------------------------------
 kernel = ['linear', 'rbf']
 c = [0.001, 0.01, 0.1, 1]
 # XGBoost ------------------------------------
-max_depth = [7, 9, 11]
+max_depth = [7, 11]
 min_child_weight = [5, 7]
 # --------------------------------------------
 #model = SVC()
