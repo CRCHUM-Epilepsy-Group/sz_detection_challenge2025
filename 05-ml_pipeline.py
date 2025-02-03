@@ -33,8 +33,6 @@ long_df = long_df.with_columns([
     pl.col(column).fill_null('missing').alias(column) for column in feature_col
 ])
 
-long_df = long_df.filter(pl.col('feature') !='band_power')
-
 wide_df = long_df.pivot(
     values='value', 
     index=index_col, 
