@@ -9,6 +9,7 @@ import scipy.stats as stats
 import warnings
 import logging
 import pickle
+import datetime
 from random import shuffle
 from sklearn.base import clone
 
@@ -910,6 +911,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     #    feature_list = s.FEATURE_GROUPS[feature_group]
     t1 = datetime.datetime.now()
     tmp = datetime.datetime.strftime(t1, '%Y%m%d_%H%M%S')
+    logger.info(tmp)
 
     results_rows = []
     df_roc_curves = pl.DataFrame(
@@ -1031,5 +1033,10 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     df_roc_curves_pd = df_roc_curves.to_pandas()
     df_roc_curves_pd.to_csv(s.RESULTS_DIR / "cv_roc_curves.csv", index=False)
     print("Results have been successfully stored.")
+
+    t2 = datetime.datetime.now()
+    logger.info(f'\nTraining time for nested cross-validation is {t2-t1}')
+    logger.info("\n\nMy scores:")
+    logger.info(all_scores)
 
     return all_scores
