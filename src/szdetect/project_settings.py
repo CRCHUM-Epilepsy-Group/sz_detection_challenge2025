@@ -50,6 +50,10 @@ DEBUG = config["runtime"]["debug"]
 RESULTS_DIR = Path(config["results"]["results_dir"])
 RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
 
+# Pretrained model
+MODEL_FILE = Path(config["model"]["pretrained_model_file"])
+MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+
 # Logs
 LOGS_FILE = Path(config["logs"]["log_file"])
 LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
