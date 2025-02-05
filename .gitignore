@@ -7,3 +7,7 @@
 .gitignore
 __pycache__/
 *draft*.py
+/data/**
+/logs/**
+launch.json
+copy_recent_files.sh

@@ -8,6 +8,7 @@ from epileptology.features.featureextraction import FeatureExtractor
 import epileptology.preprocessing as pp
 from bids import BIDSLayout
 from szdetect import project_settings as s
+from pathlib import Path
 
 
 def feature_extraction_pipeline(
@@ -18,20 +19,27 @@ def feature_extraction_pipeline(
     preprocessing_kwargs,
 ):
     dataset_name, path = iterated
-    extraction_start_time = time.perf_counter()
+
+    file_entities = parse_file_entities(path)
+    subject = file_entities["subject"]
+    session = file_entities["session"]
+    run = file_entities["run"]
+    unique_id = f"{dataset_name}_{subject}_{session}_{run}"
+    parquet_sink = s.FEATURES_DIR / f"{unique_id}.parquet"
+
+    filename = Path(path).name
+
+    if parquet_sink.exists() and not s.OVERWRITE_FEATURES:
+        print(f"Features already extracted for {filename}")
+
     try:
         eeg = pp.read_edf(path, **preprocessing_kwargs["read_edf"])
         # Normalize EEG
         eeg = pp.filter_eeg(eeg, **preprocessing_kwargs["filter_eeg"])
         eeg = eeg.apply_function(pp.normalize_eeg)
         eeg = segmenting_function(eeg, **preprocessing_kwargs["segment_eeg"])
-        extractor = FeatureExtractor(features, frameworks)
-        features = extractor.extract_feature(eeg)
-
-        subject = parse_file_entities(path)["subject"]
-        session = parse_file_entities(path)["session"]
-        run = parse_file_entities(path)["run"]
-        unique_id = f"{dataset_name}_{subject}_{session}_{run}"
+        extractor = FeatureExtractor(features, frameworks, log_dir=s.FEATURE_LOG_DIR)
+        features = extractor.extract_feature(eeg, filename)
 
         features = features.with_columns(
             dataset_name=pl.lit(dataset_name),
@@ -41,10 +49,7 @@ def feature_extraction_pipeline(
             unique_id=pl.lit(unique_id),
             second=pl.col("epoch").cast(pl.Int32),
         )
-        print("Writing parquet to file")
-        features.write_parquet(s.FEATURES_DIR / f"{unique_id}.parquet")
-        extraction_duration = (time.perf_counter() - extraction_start_time) / 60
-        print(f"Features extracted for {unique_id} in {extraction_duration:.2f}m")
+        features.write_parquet(parquet_sink)
 
         return 1
 
@@ -85,8 +90,8 @@ def main():
         segmenting_function=pp.segment_overlapping_windows,
         preprocessing_kwargs=s.PREPROCESSING_KWARGS,
         chunksize=4,
-        console=console,
         n_jobs=len(name_file_pairs),
+        console=console,
     )
 
 

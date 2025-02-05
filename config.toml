@@ -18,15 +18,16 @@ labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 features_config = "features_config.yaml"
 features_dir = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features_v3/"
 features_db_file = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features.db"
-num_workers = 1
+num_workers = 4
+overwrite = false
+log_dir = "logs/features_v3"
 
 [preprocessing]
 # -1 will be converted to None
 read_edf.channels = -1 # Default to the 19 channels in 10-20 system
 filter_eeg.l_freq = 1
 filter_eeg.h_freq = 99
-filter_eeg.notch_filter = -1
-resample_eeg.sfreq = 200
+filter_eeg.notch = -1
 segment_eeg.window_duration = 10
 segment_eeg.step_size = 10
 
@@ -35,7 +36,7 @@ results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
 #results_dir = "temp/results"
 
 [runtime]
-debug = true
+debug = false
 
 [logs]
 log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"

@@ -32,6 +32,8 @@ FEATURES, FRAMEWORKS = parse_featureextraction_config(
 FEATURES_DIR = Path(config["features"]["features_dir"])
 FEATURES_DIR.mkdir(parents=True, exist_ok=True)
 NUM_WORKERS = config["features"]["num_workers"]
+OVERWRITE_FEATURES = config["features"]["overwrite"]
+FEATURE_LOG_DIR = config["features"]["log_dir"]
 
 PREPROCESSING_KWARGS = config["preprocessing"]
 # HACK to replace -1 with None (not allowed in TOML)
