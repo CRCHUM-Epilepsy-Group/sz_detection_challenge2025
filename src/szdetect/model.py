@@ -950,7 +950,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     
 
         #X_test = test_set.select([pl.col(col) for col in feature_list])
-        X_test = test_set.drop(index_columns)
+        
         # or exclude non-features columns
         #X_test = test_set.select([col for col in test_set.columns if col not in nonfeature_list])
 
@@ -966,7 +966,13 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         model_name = f'fold_{i}_{clf}_{best_hp[0]}_{best_hp[1]}.sav'
         pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb')) # TODO
 
+        X_train = train_val_set.drop(index_columns)
+        X_train = scaler.transform(X_train)
+        y_train = train_val_set.select('label')
+
+        X_test = test_set.drop(index_columns)
         X_test = scaler.transform(X_test)
+        y_test = test_set.select('label')
         
         # Make predictions and calculate performance metrics
         metrics = calculate_metrics(best_model, test_set,
@@ -978,6 +984,26 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         
         train_subjects = "; ".join(map(str, train_val_set.select(pl.col("subject").unique()).to_series().to_list()))
         test_subjects = "; ".join(map(str, test_set.select(pl.col("subject").unique()).to_series().to_list()))
+
+        out_model = clone(best_model)
+        hp = best_hp[0]  # TODO verify best_hp[0]
+        if out_model.__class__.__name__ == 'SVC':
+            params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
+        elif out_model.__class__.__name__ == 'XGBClassifier':
+            params = {'max_depth': hp[0], 'min_child_weight': hp[1],
+                      'scale_pos_weight': 3000, 'max_delta_step': 1,
+                      'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
+
+        out_model.set_params(**params)  # TODO update params
+        out_model.fit(X_train, y_train)
+
+        y_train_pred = model.predict(X_train)
+        y_test_pred = model.predict(X_val)
+
+        pres_train, rec_train, f1_train, support_train = precision_recall_fscore_support(y_train, y_train_pred,
+        zero_division=0)
+        pres_test, rec_test, f1_test, support_test = precision_recall_fscore_support(y_test, y_test_pred,
+        zero_division=0)
 
         results_rows.append(
             {
@@ -999,6 +1025,12 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             'recall_ovlp': metrics['ovlp_recall'],
             'f1_score_regularized': metrics['f1_score_regularized'],
             'roc_auc_score': metrics['roc_auc_score'],
+            'precision_train': pres_train,
+            'precision_test': pres_test,
+            'recall_train': rec_train,
+            'recall_test': rec_test,
+            'f1_train': f1_train,
+            'f1_test': f1_test,
             #'latencies': metrics['latencies'],
             #'FAR_per_day': metrics['FAR'],
             #'Time_in_warning': metrics['Time_in_warning'],
