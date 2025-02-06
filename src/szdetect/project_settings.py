@@ -53,6 +53,10 @@ IN_DOCKER = os.environ.get("IN_DOCKER") == "1"
 RESULTS_DIR = Path(config["results"]["results_dir"])
 RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
 
+# Output of inference
+OUTPUT_DIR = Path(config["output"]["output_dir"])
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 # Pretrained model
 MODEL_FILE = Path(config["model"]["pretrained_model_file"])
 MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
