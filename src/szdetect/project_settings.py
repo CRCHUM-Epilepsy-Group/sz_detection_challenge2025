@@ -45,6 +45,7 @@ for step, kwargs in PREPROCESSING_KWARGS.items():
 
 # Runtime env
 DEBUG = config["runtime"]["debug"]
+MAX_N_EEG = config["runtime"]["max_n_eeg"]
 
 # Results
 RESULTS_DIR = Path(config["results"]["results_dir"])

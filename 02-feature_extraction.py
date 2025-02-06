@@ -9,6 +9,7 @@ import epileptology.preprocessing as pp
 from bids import BIDSLayout
 from szdetect import project_settings as s
 from pathlib import Path
+import random
 
 
 def feature_extraction_pipeline(
@@ -79,6 +80,10 @@ def main():
         name_file_pairs = [
             (name, f) for name, files in eeg_files.items() for f in files[:2]
         ]
+    if s.MAX_N_EEG > 0:
+        random.seed(123)
+        name_file_pairs = name_file_pairs[: s.MAX_N_EEG - 1]
+        name_file_pairs = random.shuffle(name_file_pairs)
 
     features = calculate_over_pool(
         feature_extraction_pipeline,
