@@ -64,15 +64,14 @@ def feature_extraction_pipeline(
 def main():
     console = Console()
 
-    if not s.IN_DOCKER:
+    if s.IN_DOCKER:
+        input_dir = f"/input/{os.environ.get('INPUT')}"
+        bids_datasets = {"testing_set": BIDSLayout(input_dir)}
+    else:
         bids_datasets = {
             name: BIDSLayout(path, database_path=(s.BIDS_DB_FILES_DIR / f"{name}.db"))
             for name, path in s.BIDS_DATASETS.items()
         }
-
-    else:
-        input_dir = os.environ.get("INPUT")
-        bids_datasets = {"testing_set": BIDSLayout(input_dir)}
 
     # Get a list of all EEG files
     eeg_files = {
