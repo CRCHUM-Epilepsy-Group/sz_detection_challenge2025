@@ -1,4 +1,5 @@
 #!/usr/bin/env ipython
+import os
 from pathlib import Path
 
 import duckdb
@@ -46,6 +47,7 @@ for step, kwargs in PREPROCESSING_KWARGS.items():
 # Runtime env
 DEBUG = config["runtime"]["debug"]
 MAX_N_EEG = config["runtime"]["max_n_eeg"]
+IN_DOCKER = os.environ.get("IN_DOCKER") == "1"
 
 # Results
 RESULTS_DIR = Path(config["results"]["results_dir"])
