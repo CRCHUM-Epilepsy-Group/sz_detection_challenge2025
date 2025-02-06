@@ -1,4 +1,5 @@
 import pickle
+import os
 import polars as pl
 from pathlib import Path
 from szdetect import pull_features as pf
@@ -53,10 +54,16 @@ def main():
         }
     )
 
+    if s.IN_DOCKER:
+        OUTPUT_DIR = Path(f"/data/{os.environ.get('OUTPUT')}")  # type: ignore
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    else:
+        OUTPUT_DIR = s.OUTPUT_DIR
+
     # Clear output directory
-    for file in s.OUTPUT_DIR.glob("*"):
+    for file in OUTPUT_DIR.glob("*"):
         file.unlink()
-    write_predictions(mock_predictions, s.OUTPUT_DIR)
+    write_predictions(mock_predictions, OUTPUT_DIR)
 
 
 if __name__ == "__main__":

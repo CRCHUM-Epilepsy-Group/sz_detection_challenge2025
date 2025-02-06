@@ -1,4 +1,5 @@
 #!/usr/bin/env ipython
+import os
 import time
 import polars as pl
 from epileptology.utils.toolkit import calculate_over_pool
@@ -63,11 +64,14 @@ def feature_extraction_pipeline(
 def main():
     console = Console()
 
-    # TODO: add database_path to Extract_labels script to speed up parsing of BIDS dbs
-    bids_datasets = {
-        name: BIDSLayout(path, database_path=(s.BIDS_DB_FILES_DIR / f"{name}.db"))
-        for name, path in s.BIDS_DATASETS.items()
-    }
+    if s.IN_DOCKER:
+        input_dir = f"/input/{os.environ.get('INPUT')}"
+        bids_datasets = {"testing_set": BIDSLayout(input_dir)}
+    else:
+        bids_datasets = {
+            name: BIDSLayout(path, database_path=(s.BIDS_DB_FILES_DIR / f"{name}.db"))
+            for name, path in s.BIDS_DATASETS.items()
+        }
 
     # Get a list of all EEG files
     eeg_files = {
@@ -75,6 +79,7 @@ def main():
         for name, bids in bids_datasets.items()
     }
     name_file_pairs = [(name, f) for name, files in eeg_files.items() for f in files]
+
     if s.DEBUG:
         # Sample from each dataset
         name_file_pairs = [
