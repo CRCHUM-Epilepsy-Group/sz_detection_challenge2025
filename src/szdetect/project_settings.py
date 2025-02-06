@@ -21,8 +21,8 @@ BIDS_DB_FILES_DIR = Path(config["utilities"]["bids_db_files_dir"])
 BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Labels
-LABELS_FILE = Path(config["labels"]["labels_file"])
-LABELS_FILE.parent.mkdir(parents=True, exist_ok=True)
+LABELS_FILE = config["labels"]["labels_file"]
+Path(LABELS_FILE).parent.mkdir(parents=True, exist_ok=True)
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
@@ -45,3 +45,43 @@ for step, kwargs in PREPROCESSING_KWARGS.items():
 
 # Runtime env
 DEBUG = config["runtime"]["debug"]
+
+# Results
+RESULTS_DIR = Path(config["results"]["results_dir"])
+RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
+
+# Pretrained model
+MODEL_FILE = Path(config["model"]["pretrained_model_file"])
+MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+# Logs
+LOGS_FILE = Path(config["logs"]["log_file"])
+LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+FEATURE_GROUPS = {
+    "efficiency": [
+        "betweenness",
+        "diversity_coef",
+        "node_betweenness",
+        "participation_coef",
+        "module_degree_zscore",
+        "eigenvector_centrality",
+        "efficiency",
+        "global_diffusion_efficiency",
+        "global_rout_efficiency",
+        "local_rout_efficiency",
+    ],
+    "connectivity": [
+        "node_degree",
+        "node_strength",
+        "transitivity",
+        "eigenvalues",
+    ],
+    "univariate": [
+        "fuzzen",
+        "linelength",
+        "corr_dim",
+        "band_power",
+        "peak_alpha",
+    ],
+}

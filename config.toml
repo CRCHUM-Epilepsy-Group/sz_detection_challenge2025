@@ -5,19 +5,19 @@ name = 'sz_detection_challenge'
 [datasets]
 # Paths to BIDS datasets
 tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
-# chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
+chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
 siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
 
 [utilities]
 bids_db_files_dir = "data/temp/bids_db"
 
 [labels]
-labels_file = "data/cleaned/labels.parquet"
+labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
-features_dir = "data/cleaned/features_v3/"
-features_db_file = "data/cleaned/features.db"
+features_dir = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features_v3/"
+features_db_file = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features.db"
 num_workers = 4
 overwrite = false
 log_dir = "logs/features_v3"
@@ -29,8 +29,18 @@ filter_eeg.l_freq = 1
 filter_eeg.h_freq = 99
 filter_eeg.notch = -1
 segment_eeg.window_duration = 10
-segment_eeg.overlap = 10
+segment_eeg.step_size = 10
+
+[results]
+results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
+#results_dir = "temp/results"
 
 [runtime]
 debug = false
 
+[logs]
+log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
+#log_file = "temp/logs/test_ml_run.log"
+
+[model]
+pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/fold_0_XGBClassifier_11_5.sav"

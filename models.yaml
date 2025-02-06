@@ -1,0 +1,51 @@
+run:
+  mode: deploy
+  multiprocess: True
+cv:
+  #random_search_n_iter: 60
+  inner_cv: 2
+  outer_cv: 2
+  #n_jobs: 20
+
+cv_test_run:
+  test_param_ind: 3
+  random_search_n_iter: 10
+  inner_cv: 2
+  outer_cv: 2
+
+eeg_label:
+  - "unique_id"
+  - "subject"
+  - "session"
+  - "run"
+  - "dataset_name"
+  - "second"
+  - "timestamp"
+  - "label"
+  - "training"
+  - "label"
+
+eeg_features:
+  - "unique_id"
+  - "second"
+  - "timestamp"
+  - "fuzzen"
+  - "linelength"
+  - "corr_dim"
+  - "betweenness"
+  # Todo read feature names from features_config
+
+models:
+  svm:
+    - !Model { 
+      key: "svm",
+      args: { kernel: "rbf" } 
+      }
+
+  xgb:
+    - !Model {
+      key: "xgb",
+      args: {max_depth: 7, min_child_weight: 5}
+      }
+
+
