@@ -111,6 +111,7 @@ def pull_features(
                     f.subject,
                     f.session,
                     f.run,
+                    l.unique_id,
                     f.timestamp,
                     f.feature,
                     f.freqs,
@@ -131,7 +132,8 @@ def pull_features(
                     f.timestamp, 
                     f.feature, 
                     f.freqs, 
-                    f.region_side, 
+                    f.region_side,
+                    l.unique_id, 
                     l.label
             """
     df = duckdb.execute(query, [feature_list]).pl()
