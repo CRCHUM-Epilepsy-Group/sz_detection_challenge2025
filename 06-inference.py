@@ -55,15 +55,18 @@ def main():
     )
 
     if s.IN_DOCKER:
-        OUTPUT_DIR = Path(f"/output/{os.environ.get('OUTPUT')}")  # type: ignore
+        output_file = Path(f"/output/{os.environ.get('OUTPUT')}")  # type: ignore
+        OUTPUT_DIR = output_file.parent
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     else:
         OUTPUT_DIR = s.OUTPUT_DIR
+        output_file = None
 
     # Clear output directory
     for file in OUTPUT_DIR.glob("*"):
         file.unlink()
-    write_predictions(mock_predictions, OUTPUT_DIR)
+
+    write_predictions(mock_predictions, OUTPUT_DIR, output_file=output_file)
 
 
 if __name__ == "__main__":
