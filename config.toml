@@ -35,8 +35,13 @@ segment_eeg.step_size = 10
 results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
 #results_dir = "temp/results"
 
+# Output for Inference pipeline
+[output]
+output_dir = "output"
+
 [runtime]
 debug = false
+max_n_eeg = 100
 
 [logs]
 log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
