@@ -21,10 +21,10 @@ df = pf.pull_features(
     feature_group="efficiency",
     train_only=True)
 
-index_col = ['epoch', 'timestamp', 'dataset_name', 'subject',
-             'session', 'run', 'unique_id', 'second', 'label']
+index_col = ['dataset_name', 'subject', 'session', 'run', 
+             'timestamp', 'label']
 
-feature_col = ['channel', 'freqs', 'feature']
+feature_col = ['region_side', 'freqs', 'feature']
 
 long_df = df.select(index_col + feature_col + ['value'])
 
