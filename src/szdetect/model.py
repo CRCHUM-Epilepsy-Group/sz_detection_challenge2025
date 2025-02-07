@@ -583,9 +583,9 @@ def calculate_metrics(model, test_set,
         pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat,
                                                                              zero_division=0)
         s = len(support_rg)
-        f1_rg = 100 * float("{:.4f}".format(f1_rg[s - 1]))
-        pres_rg = 100 * float("{:.4f}".format(pres_rg[s-1]))
-        rec_rg = 100 * float("{:.4f}".format(rec_rg[s-1]))
+        f1_rg = float("{:.4f}".format(f1_rg[s - 1]))
+        pres_rg = float("{:.4f}".format(pres_rg[s-1]))
+        rec_rg = float("{:.4f}".format(rec_rg[s-1]))
 
         if model.__class__.__name__ in ['LogisticRegression', 'SVC', 'XGBClassifier']:
             # y_pred_score = model.decision_function(scaled_X_test)
@@ -611,9 +611,9 @@ def calculate_metrics(model, test_set,
             'recall_regularized': rec_rg,  # sample-based
             'roc_auc_score': float("{:.4f}".format(roc)),  # sample-based
             'roc_fpr': fpr, 'roc_tpr': tpr, 'roc_thresholds': thresholds,  # sample-based
-            'ovlp_precision': 100 * float("{:.4f}".format(np.nanmean(ovlp_precision))),  # event-based
-            'ovlp_recall': 100 * float("{:.4f}".format(np.nanmean(ovlp_recall))),  # event-based
-            'ovlp_f1': 100 * float("{:.4f}".format(np.nanmean(ovlp_f1))),  # event-based
+            'ovlp_precision': float("{:.4f}".format(np.nanmean(ovlp_precision))),  # event-based
+            'ovlp_recall': float("{:.4f}".format(np.nanmean(ovlp_recall))),  # event-based
+            'ovlp_f1': float("{:.4f}".format(np.nanmean(ovlp_f1))),  # event-based
             'ovlp_FA': ovlp_FA, 'ovlp_MA': ovlp_MA,  # event-based
             #'latencies': latencies,  # event-based
             #'TP_SZ_overlap': TP_SZ_overlap,  # event-based
@@ -655,18 +655,16 @@ def fit_and_score(model, hp, data,
     test_set = data.filter(pl.col('subject').is_in(splits[split]['test']))
     # In inner fold, test means validation set in the corresponding CV fold.
 
-    #X_train = train_set.iloc[:, 4:-1]
-    ##X_train = train_set.select([pl.col(col) for col in feature_list])
     X_train = train_set.drop(index_columns)
-    #y_train = train_set.iloc[:, -1]
     y_train = train_set.select('label')
-    #X_test = test_set.iloc[:, 4:-1]
-    ##X_test = test_set.select([pl.col(col) for col in feature_list])
-    #X_test = test_set.drop(index_columns)
+    X_test = test_set.drop(index_columns)
+    y_test = test_set.select('label')
 
     sc = StandardScaler()
     X_train = sc.fit_transform(X_train)
-    #X_test = sc.transform(X_test)
+    X_test = sc.transform(X_test)
+
+    evals = [(X_train, y_train), (X_test, y_test)]
 
     model = clone(model)
     if model.__class__.__name__ == 'SVC':
@@ -680,6 +678,7 @@ def fit_and_score(model, hp, data,
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
                   'scale_pos_weight': 11, 'max_delta_step': 1,
+                  'eval_metric':'aucpr', 'reg_alpha': 0.1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
@@ -689,7 +688,12 @@ def fit_and_score(model, hp, data,
         params = {}
 
     model.set_params(**params)
-    model.fit(X_train, y_train)
+    # model.fit(X_train, y_train)
+    model.fit(X_train, y_train, 
+              eval_set=evals,
+              early_stopping_rounds=50,  # Stops when validation metric stops improving
+              verbose=True
+            )
     print('Training ... ')
 
     metrics = calculate_metrics(model, test_set,
@@ -701,6 +705,13 @@ def fit_and_score(model, hp, data,
                                 )
     
     score = metrics['f1_score_regularized']
+    ev_result = model.evals_result()
+    train_aucpr = ev_result['validation_0']['aucpr']
+    val_aucpr = ev_result['validation_1']['aucpr']
+    evals_results = {
+        'train_aucpr': train_aucpr,
+        'val_aucpr': val_aucpr
+    }
 
     logger.info(f"\n\tInner CV loop: fit and evaluate one model; f1-score={score}%, ROC={metrics['roc_auc_score']}")
     if model.__class__.__name__ == 'SVC':
@@ -717,7 +728,7 @@ def fit_and_score(model, hp, data,
         logger.info(f'max_depth :{hp[0]}, min_child_weight :{hp[1]}, win_size:{hp[2]},\
         step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
 
-    return metrics
+    return {**metrics, **evals_results}
 
 
 def grid_search(model, hyperparams, data,
@@ -763,6 +774,8 @@ def grid_search(model, hyperparams, data,
     recall_hp = []
     f1_ovlp_hp = []
     roc_auc_hp = []
+    train_aucpr_hp = []
+    val_aucpr_hp = []
     latencies_hp = []
     #TP_SZ_overlap_hp = []
     far_hp = []
@@ -793,6 +806,8 @@ def grid_search(model, hyperparams, data,
             recall_hp.append(metrics['ovlp_recall'])
             f1_ovlp_hp.append(metrics['ovlp_f1'])
             roc_auc_hp.append(metrics['roc_auc_score'])
+            train_aucpr_hp.append(metrics['train_aucpr'])
+            val_aucpr_hp.append(metrics['val_aucpr'])
             #latencies_hp.append(np.nanmean(np.array(metrics['latencies'])))
             #TP_SZ_overlap_hp.append(np.nanmean(np.array(metrics['TP_SZ_overlap'])))
             #far_hp.append(np.nanmean(np.array(metrics['FAR'])))
@@ -821,6 +836,8 @@ def grid_search(model, hyperparams, data,
                 'roc_auc': np.nanmean(roc_auc_hp),
                 'precision_ovlp': np.nanmean(precision_hp),
                 'recall_ovlp': np.nanmean(recall_hp),
+                'train_aucpr': np.nanmean(train_aucpr_hp),
+                'val_aucpr': np.nanmean(val_aucpr_hp)
                 #'avg_TP_SZ_overlap': np.nanmean(TP_SZ_overlap_hp),
                 #'avg_far': np.nanmean(far_hp),
                 #'avg_tiw': np.nanmean(tiw_hp),
@@ -860,6 +877,7 @@ def grid_search(model, hyperparams, data,
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
                   'scale_pos_weight': 11, 'max_delta_step': 1,
+                  'eval_metric':'aucpr', 'reg_alpha': 0.1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
@@ -992,6 +1010,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         elif out_model.__class__.__name__ == 'XGBClassifier':
             params = {'max_depth': hp[0], 'min_child_weight': hp[1],
                       'scale_pos_weight': 11, 'max_delta_step': 1,
+                      'eval_metric':'aucpr', 'reg_alpha': 0.1,
                       'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
 
         out_model.set_params(**params)  # TODO update params
