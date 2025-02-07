@@ -997,8 +997,8 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         out_model.set_params(**params)  # TODO update params
         out_model.fit(X_train, y_train)
 
-        y_train_pred = model.predict(X_train)
-        y_test_pred = model.predict(X_val)
+        y_train_pred = out_model.predict(X_train)
+        y_test_pred = out_model.predict(X_test)
 
         pres_train, rec_train, f1_train, support_train = precision_recall_fscore_support(y_train, y_train_pred,
         zero_division=0)
