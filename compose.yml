@@ -12,5 +12,5 @@ services:
       - INPUT=""
       - OUTPUT=""
     volumes:
-      - ./data:/data
+      - /path/to/data:/input
       - ./output:/output
