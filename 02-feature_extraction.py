@@ -65,7 +65,7 @@ def main():
     console = Console()
 
     if s.IN_DOCKER:
-        input_dir = f"/input/{os.environ.get('INPUT')}"
+        input_dir = f"/data/{os.environ.get('INPUT')}"
         bids_datasets = {"testing_set": BIDSLayout(input_dir)}
     else:
         bids_datasets = {

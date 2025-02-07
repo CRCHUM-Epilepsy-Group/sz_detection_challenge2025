@@ -55,7 +55,7 @@ def main():
     )
 
     if s.IN_DOCKER:
-        OUTPUT_DIR = Path(f"/data/{os.environ.get('OUTPUT')}")  # type: ignore
+        OUTPUT_DIR = Path(f"/output/{os.environ.get('OUTPUT')}")  # type: ignore
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     else:
         OUTPUT_DIR = s.OUTPUT_DIR
