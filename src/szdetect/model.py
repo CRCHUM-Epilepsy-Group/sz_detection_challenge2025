@@ -679,7 +679,7 @@ def fit_and_score(model, hp, data,
         params = {'algorithm': hp[0], 'n_neighbors': hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                  'scale_pos_weight': 13, 'max_delta_step': 1,
+                  'scale_pos_weight': 11, 'max_delta_step': 1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
@@ -859,7 +859,7 @@ def grid_search(model, hyperparams, data,
         params = {'algorithm': best_hp[0], 'n_neighbors': best_hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
-                  'scale_pos_weight': 13, 'max_delta_step': 1,
+                  'scale_pos_weight': 11, 'max_delta_step': 1,
                   'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
@@ -991,7 +991,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
         elif out_model.__class__.__name__ == 'XGBClassifier':
             params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                      'scale_pos_weight': 3000, 'max_delta_step': 1,
+                      'scale_pos_weight': 11, 'max_delta_step': 1,
                       'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
 
         out_model.set_params(**params)  # TODO update params
