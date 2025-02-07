@@ -1,6 +1,5 @@
-def write_predictions(df, output_dir):
+def write_predictions(df, output_dir, output_file=None):
     for row in df.iter_rows(named=True):
-        dataset_name = row["dataset_name"]
         subject = row["subject"]
         session = row["session"]
         run = row["run"]
@@ -10,10 +9,11 @@ def write_predictions(df, output_dir):
         dateTime = row["dateTime"]
 
         # Save to TSV file
-        output_file = (
-            output_dir
-            / f"sub-{subject}_ses-{session}_task-szMonitoring_run-{run}_events.tsv"
-        )
+        if output_file is None:
+            output_file = (
+                output_dir
+                / f"sub-{subject}_ses-{session}_task-szMonitoring_run-{run}_events.tsv"
+            )
         # If file does not exists, create it and write the header
         if not output_file.exists():
             with open(output_file, "w") as f:
