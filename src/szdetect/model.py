@@ -9,6 +9,7 @@ import scipy.stats as stats
 import warnings
 import logging
 import pickle
+import random
 import datetime
 from random import shuffle
 from sklearn.base import clone
@@ -667,8 +668,11 @@ def fit_and_score(model, hp, data,
     evals = [(X_train, y_train), (X_test, y_test)]
 
     model = clone(model)
+
+    # TODO model = Pipeline(steps=(featureSelector, scaler, model))
     if model.__class__.__name__ == 'SVC':
-        params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
+        params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'
+                  'gamma': hp[6], 'shrinking': hp[7], 'tol': hp[8]}
     elif model.__class__.__name__ == 'LogisticRegression':
         params = {'solver': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
     elif model.__class__.__name__ == 'DecisionTreeClassifier':
@@ -678,8 +682,8 @@ def fit_and_score(model, hp, data,
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
                   'scale_pos_weight': 11, 'max_delta_step': 1,
-                  'eval_metric':'aucpr', 'reg_alpha': 0.1,
-                  'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
+                  'eval_metric':'aucpr', 'reg_alpha': hp[6],
+                  'learning_rate': hp[7], 'gamma': hp[8], 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
     # Typical value to consider is sum(negative instances) / sum(positive instances)
@@ -687,11 +691,15 @@ def fit_and_score(model, hp, data,
     else:
         params = {}
 
+    #TODO pipleine.set_params((params for model, for feature selector))
+    # model.__C__
+    # featureSelector.__
+
     model.set_params(**params)
     # model.fit(X_train, y_train)
     model.fit(X_train, y_train, 
               eval_set=evals,
-              early_stopping_rounds=50,  # Stops when validation metric stops improving
+              #early_stopping_rounds=50,  # Stops when validation metric stops improving
               verbose=True
             )
     print('Training ... ')
@@ -731,7 +739,9 @@ def fit_and_score(model, hp, data,
     return {**metrics, **evals_results}
 
 
-def grid_search(model, hyperparams, data,
+def grid_search(model,
+                hyperparams:list, nb_rand_hp:int,
+                data,
                 inner_k: int, outer_fold_idx,
                 index_columns,
                 #feature_list
@@ -781,7 +791,10 @@ def grid_search(model, hyperparams, data,
     far_hp = []
     tiw_hp = []
     percentage_tiw_hp = []
-    for j, hp in enumerate(hyperparams):
+
+    random_hyperparams = random.choices(hyperparams, k=nb_rand_hp)
+
+    for j, hp in enumerate(random_hyperparams):
         logger.info(f"\n  Grid search: evaluate hyperparameters = \
         solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]} ")
 
@@ -851,7 +864,7 @@ def grid_search(model, hyperparams, data,
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
-    best_hp = hyperparams[np.argmax(all_scores)]
+    best_hp = random_hyperparams[np.argmax(all_scores)]
     logger.info(f'Outer fold {outer_fold_idx} grid search finished')
     logger.info(f'\t ** Grid search: keep best hyperparameters combination = {best_hp} **')
     logger.info(f'\t ** Highest f1-score (regularized) from the grid search is {np.max(all_scores)}')
@@ -867,7 +880,8 @@ def grid_search(model, hyperparams, data,
     X = sc.fit_transform(X)
 
     if model.__class__.__name__ == 'SVC':
-        params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'}
+        params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'
+                  'gamma': best_hp[6], 'shrinking': best_hp[7], 'tol': best_hp[8]}
     elif model.__class__.__name__ == 'LogisticRegression':
         params = {'solver': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'}
     elif model.__class__.__name__ == 'DecisionTreeClassifier':
@@ -877,8 +891,8 @@ def grid_search(model, hyperparams, data,
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
                   'scale_pos_weight': 11, 'max_delta_step': 1,
-                  'eval_metric':'aucpr', 'reg_alpha': 0.1,
-                  'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
+                  'eval_metric':'aucpr', 'reg_alpha': best_hp[6],
+                  'learning_rate': best_hp[7], 'gamma': best_hp[8], 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
     # Typical value to consider is sum(negative instances) / sum(positive instances)
@@ -972,7 +986,8 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         # or exclude non-features columns
         #X_test = test_set.select([col for col in test_set.columns if col not in nonfeature_list])
 
-        gridsearch_per_fold = grid_search(model, hyperparams, train_val_set, inner_k,
+        gridsearch_per_fold = grid_search(model, hyperparams, 10,
+                                          train_val_set, inner_k,
                                           outer_fold_idx=i,
                                           index_columns=index_columns
                                           #home_path=home_path
@@ -1003,15 +1018,15 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         train_subjects = "; ".join(map(str, train_val_set.select(pl.col("subject").unique()).to_series().to_list()))
         test_subjects = "; ".join(map(str, test_set.select(pl.col("subject").unique()).to_series().to_list()))
 
-        out_model = clone(best_model)
-        hp = best_hp[0]  # TODO verify best_hp[0]
+        out_model = clone(model)
         if out_model.__class__.__name__ == 'SVC':
-            params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
+            params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'
+                      'gamma': best_hp[6], 'shrinking': best_hp[7], 'tol': best_hp[8]}
         elif out_model.__class__.__name__ == 'XGBClassifier':
-            params = {'max_depth': hp[0], 'min_child_weight': hp[1],
+            params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
                       'scale_pos_weight': 11, 'max_delta_step': 1,
-                      'eval_metric':'aucpr', 'reg_alpha': 0.1,
-                      'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
+                      'eval_metric':'aucpr', 'reg_alpha': best_hp[6],
+                      'learning_rate': best_hp[7], 'gamma': best_hp[8], 'booster': 'gbtree'}
 
         out_model.set_params(**params)  # TODO update params
         out_model.fit(X_train, y_train)
