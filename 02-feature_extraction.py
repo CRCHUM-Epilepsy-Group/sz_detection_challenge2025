@@ -1,5 +1,11 @@
 #!/usr/bin/env ipython
 import os
+
+# For testing single EEG times
+# os.environ["IN_DOCKER"] = "1"
+# os.environ["INPUT"] = (
+#     "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure/sub-386/ses-04/eeg/sub-386_ses-04_task-szMonitoring_run-00_eeg.edf"
+# )
 import time
 import polars as pl
 from epileptology.utils.toolkit import calculate_over_pool
@@ -68,7 +74,7 @@ def main():
     console = Console()
 
     if s.IN_DOCKER:
-        edf_file = f"/data/{os.environ.get('INPUT')}"
+        edf_file = f"{os.environ.get('INPUT')}"
         dataset_name = "testing_set"
         name_file_pair = (dataset_name, edf_file)
 
