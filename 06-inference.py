@@ -60,6 +60,7 @@ def main():
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     else:
         OUTPUT_DIR = s.OUTPUT_DIR
+        output_file = None
 
     # Clear output directory
     for file in OUTPUT_DIR.glob("*"):
