@@ -68,7 +68,7 @@ def main():
     console = Console()
 
     if s.IN_DOCKER:
-        edf_file = f"/input/{os.environ.get('INPUT')}"
+        edf_file = f"/data/{os.environ.get('INPUT')}"
         dataset_name = "testing_set"
         name_file_pair = (dataset_name, edf_file)
 

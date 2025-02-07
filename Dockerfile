@@ -44,6 +44,7 @@ VOLUME ["/output"]
 # Explicitely define environment variables
 ENV INPUT=""
 ENV OUTPUT=""
+ENV IN_DOCKER=1
 
 # Run the pipeline (to change later!)
 CMD ["uv", "run", "test_main.py"]
