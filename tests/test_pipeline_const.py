@@ -61,7 +61,7 @@ elif in_model.__class__.__name__ == 'XGBClassifier':
     params = {'max_depth': hp[0], 'min_child_weight': hp[1],
                   'scale_pos_weight': scale_pos_weight, 'max_delta_step': 1,
                   'eval_metric':'aucpr', 'reg_alpha': hp[6],
-                  'early_stopping_rounds': 200,
+                  #'early_stopping_rounds': 200,
                   'learning_rate': hp[7], 'gamma': hp[8], 'booster': 'gbtree'}
     
 in_model.set_params(**params)
