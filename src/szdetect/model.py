@@ -317,7 +317,7 @@ def ovlp(labels, predictions, step=1):
             'detected_sz': detected_sz, 'missed_sz': missed_sz}
 
 
-def predictions_per_record(test_dataset, 
+def predictions_per_record(test_dataset:pl.DataFrame, 
                            record_id: str,
                            pipeline,
                         #    model,
@@ -366,7 +366,7 @@ def predictions_per_record(test_dataset,
     X_test_rec = test_rec.drop(index_columns)
     # sc_X_test_rec = scaler.transform(X_test_rec)
     # pred_rec = model.predict(sc_X_test_rec) #FIXED maybe we need to import scaler here and predict only for the record selected
-    pred_rec = pipeline.predict(X_test_rec)
+    pred_rec = pipeline.predict(X_test_rec.to_pandas())
 
     logger.info(f'Analyzing EEG record : {record_name}')
     """
@@ -600,7 +600,7 @@ def calculate_metrics(pipeline,
         if model.__class__.__name__ in ['LogisticRegression', 'SVC', 'XGBClassifier']:
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
-            y_pred_score = pipeline.predict_proba(X_test)[:, 1]
+            y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -669,9 +669,9 @@ def fit_and_score(model, hp, data,
     y_train = train_set.select('label')
     # X_test = test_set.drop(index_columns)
     # y_test = test_set.select('label')
-    n_pos = sum(y_train == 1)
-    n_neg = sum(y_train == 0)
-    scale_pos_weight = n_neg / n_pos
+    n_neg = len(train_set.filter(pl.col("label")==False))
+    n_pos = len(train_set.filter(pl.col("label")==True))
+    scale_pos_weight = int(n_neg / n_pos)
 
     sel = MRMR(method="FCQ", regression=False) #TODO take feature selector in args
 
@@ -721,7 +721,7 @@ def fit_and_score(model, hp, data,
         ('scaler', sc),  
         ('classifier', in_model)
     ])
-    pipeline.fit(X_train, y_train)
+    pipeline.fit(X_train.to_pandas(), y_train.to_pandas())
 
     print('Training ... ')
 
@@ -901,9 +901,9 @@ def grid_search(model,
     #y = data.iloc[:, -1]
     y = data.select('label')
 
-    n_pos = sum(y == 1)
-    n_neg = sum(y == 0)
-    scale_pos_weight = n_neg / n_pos
+    n_neg = len(data.filter(pl.col("label")==False))
+    n_pos = len(data.filter(pl.col("label")==True))
+    scale_pos_weight = int(n_neg / n_pos)
 
     sel = MRMR(method="FCQ", regression=False)
 
@@ -939,7 +939,7 @@ def grid_search(model,
         ('classifier', best_model)
     ])
     tt1 = datetime.datetime.now()
-    out_pipeline.fit(X, y)
+    out_pipeline.fit(X.to_pandas(), y.to_pandas())
     tt2 = datetime.datetime.now()
     logger.info(f'\nTraining time for one model in outer fold is {tt2-tt1}')
     print(f'\n\t\tTraining time for one model in outer fold is {tt2-tt1}')
@@ -1085,8 +1085,8 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         ])
         pipeline.fit(X_train, y_train)"""
 
-        y_train_pred = best_pipeline.predict(X_train)
-        y_test_pred = best_pipeline.predict(X_test)
+        y_train_pred = best_pipeline.predict(X_train.to_pandas())
+        y_test_pred = best_pipeline.predict(X_test.to_pandas())
 
         pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
                                                     pos_label=1, average='binary', zero_division=0)
