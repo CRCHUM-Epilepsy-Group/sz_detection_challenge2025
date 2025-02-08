@@ -938,7 +938,11 @@ def grid_search(model,
         ('scaler', sc),  
         ('classifier', best_model)
     ])
+    tt1 = datetime.datetime.now()
     out_pipeline.fit(X, y)
+    tt2 = datetime.datetime.now()
+    logger.info(f'\nTraining time for one model in outer fold is {tt2-tt1}')
+    print(f'\n\t\tTraining time for one model in outer fold is {tt2-tt1}')
 
     return {'best_model': best_model, 'best_hyperparam': best_hp, 'scaler': sc,
             'best_pipeline': out_pipeline}
