@@ -669,6 +669,9 @@ def fit_and_score(model, hp, data,
     y_train = train_set.select('label')
     # X_test = test_set.drop(index_columns)
     # y_test = test_set.select('label')
+    n_pos = sum(y_train == 1)
+    n_neg = sum(y_train == 0)
+    scale_pos_weight = n_neg / n_pos
 
     sel = MRMR(method="FCQ", regression=False) #TODO take feature selector in args
 
@@ -692,7 +695,7 @@ def fit_and_score(model, hp, data,
         params = {'algorithm': hp[0], 'n_neighbors': hp[1]}
     elif in_model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                  'scale_pos_weight': 11, #TODO calculate scale_pos_weight dynamically
+                  'scale_pos_weight': scale_pos_weight, 
                   'max_delta_step': 1,
                   'eval_metric':'aucpr', 'reg_alpha': hp[6],
                   'learning_rate': hp[7], 'gamma': hp[8], 'booster': 'gbtree'}
@@ -898,6 +901,10 @@ def grid_search(model,
     #y = data.iloc[:, -1]
     y = data.select('label')
 
+    n_pos = sum(y == 1)
+    n_neg = sum(y == 0)
+    scale_pos_weight = n_neg / n_pos
+
     sel = MRMR(method="FCQ", regression=False)
 
     sc = StandardScaler()
@@ -914,7 +921,7 @@ def grid_search(model,
         params = {'algorithm': best_hp[0], 'n_neighbors': best_hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
-                  'scale_pos_weight': 11, 'max_delta_step': 1,
+                  'scale_pos_weight': scale_pos_weight, 'max_delta_step': 1,
                   'eval_metric':'aucpr', 'reg_alpha': best_hp[6],
                   'learning_rate': best_hp[7], 'gamma': best_hp[8], 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
