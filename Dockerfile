@@ -1,19 +1,14 @@
-FROM python:3.11-slim
+FROM python:3.11
 COPY --from=ghcr.io/astral-sh/uv:0.5.9 /uv /uvx /bin/
 
-COPY . /app
-WORKDIR /app
+# Install cmake for epileptology further down
+RUN apt-get -y update \
+    && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    cmake
 
-# Create a non-privileged user that the app will run under.
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    appuser
+WORKDIR /app
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
@@ -36,8 +31,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Install the szdetect package
 RUN uv pip install -e .
 
-# Switch to the non-privileged user to run the application.
-USER appuser
+# Install epileptology package
+RUN uv pip install /app/epileptology
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
@@ -49,6 +44,7 @@ VOLUME ["/output"]
 # Explicitely define environment variables
 ENV INPUT=""
 ENV OUTPUT=""
+ENV IN_DOCKER=1
 
 # Run the pipeline (to change later!)
-CMD ["uv", "--help"]
+CMD ["uv", "run", "test_main.py"]

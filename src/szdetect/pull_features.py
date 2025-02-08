@@ -84,12 +84,13 @@ def pull_features(
     feature_dir = Path(feature_dir)
     feature_files = [str(f) for f in feature_dir.glob("*.parquet")]
 
+    feature_rel = duckdb.read_parquet(feature_files)
+
     # TODO: add parameter to avoid loading features (inference = True)
     if inference:
-        raise NotImplementedError
-
-    feature_rel = duckdb.read_parquet(feature_files)
-    label_rel = duckdb.read_parquet(str(label_file))
+        label_rel = None
+    else:
+        label_rel = duckdb.read_parquet(str(label_file))
 
     if feature_group == "all":
         feature_list = [
@@ -100,9 +101,18 @@ def pull_features(
     else:
         feature_list = FEATURE_GROUPS[feature_group]
 
-    where_clause = "WHERE feature IN ?" + (
-        " AND l.training = TRUE" if train_only else ""
-    )
+    if inference:
+        join_where_clause = "WHERE feature IN ?"
+    else:
+        where_clause = """
+            JOIN label_rel AS l
+                ON f.subject = l.subject 
+                AND f.session = l.session 
+                AND f.run = l.run 
+                AND f.timestamp = l.timestamp
+            WHERE feature IN ?"""
+        join_clause = " AND l.training = TRUE" if train_only else ""
+        join_where_clause = where_clause + join_clause
 
     # TODO: average over brain region if brain_region is not None
     query = f"""SELECT
@@ -115,15 +125,10 @@ def pull_features(
                     f.timestamp,
                     f.feature,
                     f.freqs,
-                    AVG(f.value) AS value,
-                    l.label
+                    AVG(f.value) AS value
+                    {", l.label" if not inference else ""}
                 FROM feature_rel AS f
-                JOIN label_rel AS l
-                    ON f.subject = l.subject 
-                    AND f.session = l.session 
-                    AND f.run = l.run 
-                    AND f.timestamp = l.timestamp
-                {where_clause}
+                {join_where_clause}
                 GROUP BY
                     f.dataset_name,
                     f.subject, 
@@ -132,9 +137,8 @@ def pull_features(
                     f.timestamp, 
                     f.feature, 
                     f.freqs, 
-                    f.region_side,
-                    l.unique_id, 
-                    l.label
+                    f.region_side
+                    {", l.label" if not inference else ""}
             """
     df = duckdb.execute(query, [feature_list]).pl()
 

@@ -11,3 +11,5 @@ __pycache__/
 /logs/**
 launch.json
 copy_recent_files.sh
+output/**
+epileptology/

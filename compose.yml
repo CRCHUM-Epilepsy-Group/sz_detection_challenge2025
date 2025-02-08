@@ -2,11 +2,15 @@ services:
   app:
     build:
       context: .
+      ulimits:
+        nofile:
+          soft: 10000
+          hard: 10000
     image: sz_detection:latest
     container_name: sz_CRCHUM
     environment:
       - INPUT=""
       - OUTPUT=""
     volumes:
-      - ./data:/data
+      - /path/to/data:/input
       - ./output:/output
