@@ -21,6 +21,8 @@ with warnings.catch_warnings():
 import lightgbm as lgb
 import yaml
 from sklearn import svm
+from sklearn.pipeline import Pipeline
+from feature_engine.selection import MRMR
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import roc_curve, roc_auc_score
@@ -317,8 +319,9 @@ def ovlp(labels, predictions, step=1):
 
 def predictions_per_record(test_dataset, 
                            record_id: str,
-                           model,
-                           scaler, #scaled_X_test,
+                           pipeline,
+                        #    model,
+                        #    scaler, #scaled_X_test,
                            index_columns,
                            tau=6, threshold=0.85, step=1,
                            #plot_alarms=False, show_plots=True, save_fig=None, 
@@ -361,9 +364,9 @@ def predictions_per_record(test_dataset,
     record_name = test_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
     
     X_test_rec = test_rec.drop(index_columns)
-    sc_X_test_rec = scaler.transform(X_test_rec)
-    pred_rec = model.predict(sc_X_test_rec) #FIXED maybe we need to import scaler here and predict only for the record selected
-
+    # sc_X_test_rec = scaler.transform(X_test_rec)
+    # pred_rec = model.predict(sc_X_test_rec) #FIXED maybe we need to import scaler here and predict only for the record selected
+    pred_rec = pipeline.predict(X_test_rec)
 
     logger.info(f'Analyzing EEG record : {record_name}')
     """
@@ -507,8 +510,10 @@ def predictions_per_record(test_dataset,
             'regularized_predictions': pred_ann}
 
 
-def calculate_metrics(model, test_set,
-                      scaler,
+def calculate_metrics(pipeline,
+                    #   model,
+                      test_set,
+                    #   scaler,
                       index_columns,
                       tau=6, threshold=.85, step=1,
                       #show=True, 
@@ -533,7 +538,7 @@ def calculate_metrics(model, test_set,
 
     #y_test = test_set.iloc[:, -1]
     X_test = test_set.drop(index_columns)
-    scaled_X_test = scaler.transform(X_test)
+    # scaled_X_test = scaler.transform(X_test)
     y_test = test_set.select('label')
 
     #latencies = []
@@ -549,8 +554,11 @@ def calculate_metrics(model, test_set,
     for rec in test_set["unique_id"].unique():
         
         # Predictions per record _______________________________________________________________________________________
-        pred = predictions_per_record(test_set, record_id=rec, model=model,
-                                      scaler=scaler, #scaled_X_test=scaled_X_test,
+        pred = predictions_per_record(test_dataset=test_set,
+                                      record_id=rec, 
+                                      pipeline=pipeline,
+                                    #   model=model,
+                                    #   scaler=scaler, #scaled_X_test=scaled_X_test,
                                       index_columns=index_columns,
                                       tau=tau, threshold=threshold, step=step,
                                       #plot_alarms=show, show_plots=show,
@@ -588,10 +596,11 @@ def calculate_metrics(model, test_set,
         pres_rg = float("{:.4f}".format(pres_rg[s-1]))
         rec_rg = float("{:.4f}".format(rec_rg[s-1]))
 
+        model = pipeline[-1]
         if model.__class__.__name__ in ['LogisticRegression', 'SVC', 'XGBClassifier']:
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
-            y_pred_score = model.predict_proba(scaled_X_test)[:, 1]
+            y_pred_score = pipeline.predict_proba(X_test)[:, 1]
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -658,30 +667,33 @@ def fit_and_score(model, hp, data,
 
     X_train = train_set.drop(index_columns)
     y_train = train_set.select('label')
-    X_test = test_set.drop(index_columns)
-    y_test = test_set.select('label')
+    # X_test = test_set.drop(index_columns)
+    # y_test = test_set.select('label')
 
-    sc = StandardScaler()
-    X_train = sc.fit_transform(X_train)
-    X_test = sc.transform(X_test)
+    sel = MRMR(method="FCQ", regression=False) #TODO take feature selector in args
 
-    evals = [(X_train, y_train), (X_test, y_test)]
+    sc = StandardScaler() #TODO take scaler in args
+    # X_train = sc.fit_transform(X_train)
+    # X_test = sc.transform(X_test)
 
-    model = clone(model)
+    # # evals = [(X_train, y_train), (X_test, y_test)]
+
+    in_model = clone(model)
 
     # TODO model = Pipeline(steps=(featureSelector, scaler, model))
-    if model.__class__.__name__ == 'SVC':
-        params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'
+    if in_model.__class__.__name__ == 'SVC':
+        params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced',
                   'gamma': hp[6], 'shrinking': hp[7], 'tol': hp[8]}
-    elif model.__class__.__name__ == 'LogisticRegression':
+    elif in_model.__class__.__name__ == 'LogisticRegression':
         params = {'solver': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
-    elif model.__class__.__name__ == 'DecisionTreeClassifier':
+    elif in_model.__class__.__name__ == 'DecisionTreeClassifier':
         params = {'splitter': hp[0], 'criterion': hp[1], 'class_weight': 'balanced'}
-    elif model.__class__.__name__ == 'KNeighborsClassifier':
+    elif in_model.__class__.__name__ == 'KNeighborsClassifier':
         params = {'algorithm': hp[0], 'n_neighbors': hp[1]}
-    elif model.__class__.__name__ == 'XGBClassifier':
+    elif in_model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                  'scale_pos_weight': 11, 'max_delta_step': 1,
+                  'scale_pos_weight': 11, #TODO calculate scale_pos_weight dynamically
+                  'max_delta_step': 1,
                   'eval_metric':'aucpr', 'reg_alpha': hp[6],
                   'learning_rate': hp[7], 'gamma': hp[8], 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
@@ -695,17 +707,25 @@ def fit_and_score(model, hp, data,
     # model.__C__
     # featureSelector.__
 
-    model.set_params(**params)
-    # model.fit(X_train, y_train)
-    model.fit(X_train, y_train, 
-              eval_set=evals,
-              #early_stopping_rounds=50,  # Stops when validation metric stops improving
-              verbose=True
-            )
+    in_model.set_params(**params)
+    # TODO figure out how to pass eval_set to pipeline
+    # model.fit(X_train, y_train, 
+    #           eval_set=evals,
+    #           verbose=True
+    #         )
+    pipeline = Pipeline([
+        ('feature_selector', sel),
+        ('scaler', sc),  
+        ('classifier', in_model)
+    ])
+    pipeline.fit(X_train, y_train)
+
     print('Training ... ')
 
-    metrics = calculate_metrics(model, test_set,
-                                scaler=sc, 
+    metrics = calculate_metrics(pipeline=pipeline,
+                                # in_model,
+                                test_set = test_set, #TODO pass pipeline instead of model and sc
+                                # scaler=sc, 
                                 index_columns=index_columns,
                                 tau=hp[4], threshold=hp[5], step=hp[3],
                                 #show=False,
@@ -713,26 +733,28 @@ def fit_and_score(model, hp, data,
                                 )
     
     score = metrics['f1_score_regularized']
-    ev_result = model.evals_result()
-    train_aucpr = ev_result['validation_0']['aucpr']
-    val_aucpr = ev_result['validation_1']['aucpr']
+    # ev_result = model.evals_result()
+    # train_aucpr = ev_result['validation_0']['aucpr']
+    # val_aucpr = ev_result['validation_1']['aucpr']
+    train_aucpr = None
+    val_aucpr = None
     evals_results = {
         'train_aucpr': train_aucpr,
         'val_aucpr': val_aucpr
     }
 
     logger.info(f"\n\tInner CV loop: fit and evaluate one model; f1-score={score}%, ROC={metrics['roc_auc_score']}")
-    if model.__class__.__name__ == 'SVC':
+    if in_model.__class__.__name__ == 'SVC':
         logger.info(f'kernel:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'LogisticRegression':
+    elif in_model.__class__.__name__ == 'LogisticRegression':
         logger.info(f'solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'DecisionTreeClassifier':
+    elif in_model.__class__.__name__ == 'DecisionTreeClassifier':
         logger.info(f'splitter:{hp[0]}, criterion:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]},\
         threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'KNeighborsClassifier':
+    elif in_model.__class__.__name__ == 'KNeighborsClassifier':
         logger.info(f'algorithm:{hp[0]}, n_neighbors:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]},\
         threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'XGBClassifier':
+    elif in_model.__class__.__name__ == 'XGBClassifier':
         logger.info(f'max_depth :{hp[0]}, min_child_weight :{hp[1]}, win_size:{hp[2]},\
         step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
 
@@ -876,11 +898,13 @@ def grid_search(model,
     #y = data.iloc[:, -1]
     y = data.select('label')
 
+    sel = MRMR(method="FCQ", regression=False)
+
     sc = StandardScaler()
-    X = sc.fit_transform(X)
+    # X = sc.fit_transform(X)
 
     if model.__class__.__name__ == 'SVC':
-        params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'
+        params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced',
                   'gamma': best_hp[6], 'shrinking': best_hp[7], 'tol': best_hp[8]}
     elif model.__class__.__name__ == 'LogisticRegression':
         params = {'solver': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'}
@@ -901,9 +925,16 @@ def grid_search(model,
     else:
         params = {}
     best_model.set_params(**params)
-    best_model.fit(X, y)
+    # best_model.fit(X, y)
+    out_pipeline = Pipeline([
+        ('feature_selector', sel),
+        ('scaler', sc),  
+        ('classifier', best_model)
+    ])
+    out_pipeline.fit(X, y)
 
-    return {'best_model': best_model, 'best_hyperparam': best_hp, 'scaler': sc}
+    return {'best_model': best_model, 'best_hyperparam': best_hp, 'scaler': sc,
+            'best_pipeline': out_pipeline}
 
 
 def cross_validate(model, hyperparams:list, data:pl.DataFrame,
@@ -986,8 +1017,11 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         # or exclude non-features columns
         #X_test = test_set.select([col for col in test_set.columns if col not in nonfeature_list])
 
-        gridsearch_per_fold = grid_search(model, hyperparams, 10,
-                                          train_val_set, inner_k,
+        gridsearch_per_fold = grid_search(model, 
+                                          hyperparams = hyperparams, 
+                                          nb_rand_hp = 10,
+                                          data = train_val_set,
+                                          inner_k = inner_k,
                                           outer_fold_idx=i,
                                           index_columns=index_columns
                                           #home_path=home_path
@@ -995,16 +1029,19 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         best_model = gridsearch_per_fold['best_model']
         best_hp = gridsearch_per_fold['best_hyperparam']
         scaler = gridsearch_per_fold['scaler']
+        best_pipeline = gridsearch_per_fold['best_pipeline']
 
         model_name = f'fold_{i}_{clf}_{best_hp[0]}_{best_hp[1]}.sav'
-        pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb')) # TODO
+        pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb'))
+        pipeline_name = f'fold_{i}_pipeline_{best_hp[0]}_{best_hp[1]}.sav'
+        pickle.dump(best_pipeline, open(s.RESULTS_DIR / pipeline_name, 'wb'))
 
         X_train = train_val_set.drop(index_columns)
-        X_train = scaler.transform(X_train)
+        # X_train = scaler.transform(X_train)
         y_train = train_val_set.select('label')
 
         X_test = test_set.drop(index_columns)
-        X_test = scaler.transform(X_test)
+        # X_test = scaler.transform(X_test)
         y_test = test_set.select('label')
         
         # Make predictions and calculate performance metrics
@@ -1018,9 +1055,9 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         train_subjects = "; ".join(map(str, train_val_set.select(pl.col("subject").unique()).to_series().to_list()))
         test_subjects = "; ".join(map(str, test_set.select(pl.col("subject").unique()).to_series().to_list()))
 
-        out_model = clone(model)
+        """out_model = clone(model)
         if out_model.__class__.__name__ == 'SVC':
-            params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'
+            params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced',
                       'gamma': best_hp[6], 'shrinking': best_hp[7], 'tol': best_hp[8]}
         elif out_model.__class__.__name__ == 'XGBClassifier':
             params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
@@ -1028,16 +1065,22 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
                       'eval_metric':'aucpr', 'reg_alpha': best_hp[6],
                       'learning_rate': best_hp[7], 'gamma': best_hp[8], 'booster': 'gbtree'}
 
-        out_model.set_params(**params)  # TODO update params
-        out_model.fit(X_train, y_train)
+        out_model.set_params(**params)  
+        # out_model.fit(X_train, y_train)
+        pipeline = Pipeline([
+            ('feature_selector', sel),
+            ('scaler', sc),  
+            ('classifier', out_model)
+        ])
+        pipeline.fit(X_train, y_train)"""
 
-        y_train_pred = out_model.predict(X_train)
-        y_test_pred = out_model.predict(X_test)
+        y_train_pred = best_pipeline.predict(X_train)
+        y_test_pred = best_pipeline.predict(X_test)
 
-        pres_train, rec_train, f1_train, support_train = precision_recall_fscore_support(y_train, y_train_pred,
-        zero_division=0)
-        pres_test, rec_test, f1_test, support_test = precision_recall_fscore_support(y_test, y_test_pred,
-        zero_division=0)
+        pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
+                                                    pos_label=1, average='binary', zero_division=0)
+        pres_test, rec_test, f1_test, _ = precision_recall_fscore_support(y_test, y_test_pred,
+                                                    pos_label=1, average='binary', zero_division=0)
 
         results_rows.append(
             {
