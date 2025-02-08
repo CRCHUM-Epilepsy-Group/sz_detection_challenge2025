@@ -9,6 +9,7 @@ import scipy.stats as stats
 import warnings
 import logging
 import pickle
+import random
 import datetime
 from random import shuffle
 from sklearn.base import clone
@@ -20,6 +21,8 @@ with warnings.catch_warnings():
 import lightgbm as lgb
 import yaml
 from sklearn import svm
+from sklearn.pipeline import Pipeline
+from feature_engine.selection import MRMR
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import roc_curve, roc_auc_score
@@ -314,10 +317,11 @@ def ovlp(labels, predictions, step=1):
             'detected_sz': detected_sz, 'missed_sz': missed_sz}
 
 
-def predictions_per_record(test_dataset, 
+def predictions_per_record(test_dataset:pl.DataFrame, 
                            record_id: str,
-                           model,
-                           scaler, #scaled_X_test,
+                           pipeline,
+                        #    model,
+                        #    scaler, #scaled_X_test,
                            index_columns,
                            tau=6, threshold=0.85, step=1,
                            #plot_alarms=False, show_plots=True, save_fig=None, 
@@ -360,9 +364,9 @@ def predictions_per_record(test_dataset,
     record_name = test_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
     
     X_test_rec = test_rec.drop(index_columns)
-    sc_X_test_rec = scaler.transform(X_test_rec)
-    pred_rec = model.predict(sc_X_test_rec) #FIXED maybe we need to import scaler here and predict only for the record selected
-
+    # sc_X_test_rec = scaler.transform(X_test_rec)
+    # pred_rec = model.predict(sc_X_test_rec) #FIXED maybe we need to import scaler here and predict only for the record selected
+    pred_rec = pipeline.predict(X_test_rec.to_pandas())
 
     logger.info(f'Analyzing EEG record : {record_name}')
     """
@@ -506,8 +510,10 @@ def predictions_per_record(test_dataset,
             'regularized_predictions': pred_ann}
 
 
-def calculate_metrics(model, test_set,
-                      scaler,
+def calculate_metrics(pipeline,
+                    #   model,
+                      test_set,
+                    #   scaler,
                       index_columns,
                       tau=6, threshold=.85, step=1,
                       #show=True, 
@@ -532,7 +538,7 @@ def calculate_metrics(model, test_set,
 
     #y_test = test_set.iloc[:, -1]
     X_test = test_set.drop(index_columns)
-    scaled_X_test = scaler.transform(X_test)
+    # scaled_X_test = scaler.transform(X_test)
     y_test = test_set.select('label')
 
     #latencies = []
@@ -548,8 +554,11 @@ def calculate_metrics(model, test_set,
     for rec in test_set["unique_id"].unique():
         
         # Predictions per record _______________________________________________________________________________________
-        pred = predictions_per_record(test_set, record_id=rec, model=model,
-                                      scaler=scaler, #scaled_X_test=scaled_X_test,
+        pred = predictions_per_record(test_dataset=test_set,
+                                      record_id=rec, 
+                                      pipeline=pipeline,
+                                    #   model=model,
+                                    #   scaler=scaler, #scaled_X_test=scaled_X_test,
                                       index_columns=index_columns,
                                       tau=tau, threshold=threshold, step=step,
                                       #plot_alarms=show, show_plots=show,
@@ -583,14 +592,15 @@ def calculate_metrics(model, test_set,
         pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat,
                                                                              zero_division=0)
         s = len(support_rg)
-        f1_rg = 100 * float("{:.4f}".format(f1_rg[s - 1]))
-        pres_rg = 100 * float("{:.4f}".format(pres_rg[s-1]))
-        rec_rg = 100 * float("{:.4f}".format(rec_rg[s-1]))
+        f1_rg = float("{:.4f}".format(f1_rg[s - 1]))
+        pres_rg = float("{:.4f}".format(pres_rg[s-1]))
+        rec_rg = float("{:.4f}".format(rec_rg[s-1]))
 
+        model = pipeline[-1]
         if model.__class__.__name__ in ['LogisticRegression', 'SVC', 'XGBClassifier']:
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
-            y_pred_score = model.predict_proba(scaled_X_test)[:, 1]
+            y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -611,9 +621,9 @@ def calculate_metrics(model, test_set,
             'recall_regularized': rec_rg,  # sample-based
             'roc_auc_score': float("{:.4f}".format(roc)),  # sample-based
             'roc_fpr': fpr, 'roc_tpr': tpr, 'roc_thresholds': thresholds,  # sample-based
-            'ovlp_precision': 100 * float("{:.4f}".format(np.nanmean(ovlp_precision))),  # event-based
-            'ovlp_recall': 100 * float("{:.4f}".format(np.nanmean(ovlp_recall))),  # event-based
-            'ovlp_f1': 100 * float("{:.4f}".format(np.nanmean(ovlp_f1))),  # event-based
+            'ovlp_precision': float("{:.4f}".format(np.nanmean(ovlp_precision))),  # event-based
+            'ovlp_recall': float("{:.4f}".format(np.nanmean(ovlp_recall))),  # event-based
+            'ovlp_f1': float("{:.4f}".format(np.nanmean(ovlp_f1))),  # event-based
             'ovlp_FA': ovlp_FA, 'ovlp_MA': ovlp_MA,  # event-based
             #'latencies': latencies,  # event-based
             #'TP_SZ_overlap': TP_SZ_overlap,  # event-based
@@ -655,32 +665,40 @@ def fit_and_score(model, hp, data,
     test_set = data.filter(pl.col('subject').is_in(splits[split]['test']))
     # In inner fold, test means validation set in the corresponding CV fold.
 
-    #X_train = train_set.iloc[:, 4:-1]
-    ##X_train = train_set.select([pl.col(col) for col in feature_list])
     X_train = train_set.drop(index_columns)
-    #y_train = train_set.iloc[:, -1]
     y_train = train_set.select('label')
-    #X_test = test_set.iloc[:, 4:-1]
-    ##X_test = test_set.select([pl.col(col) for col in feature_list])
-    #X_test = test_set.drop(index_columns)
+    # X_test = test_set.drop(index_columns)
+    # y_test = test_set.select('label')
+    n_neg = len(train_set.filter(pl.col("label")==False))
+    n_pos = len(train_set.filter(pl.col("label")==True))
+    scale_pos_weight = int(n_neg / n_pos)
 
-    sc = StandardScaler()
-    X_train = sc.fit_transform(X_train)
-    #X_test = sc.transform(X_test)
+    sel = MRMR(method="FCQ", regression=False) #TODO take feature selector in args
 
-    model = clone(model)
-    if model.__class__.__name__ == 'SVC':
-        params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
-    elif model.__class__.__name__ == 'LogisticRegression':
+    sc = StandardScaler() #TODO take scaler in args
+    # X_train = sc.fit_transform(X_train)
+    # X_test = sc.transform(X_test)
+
+    # # evals = [(X_train, y_train), (X_test, y_test)]
+
+    in_model = clone(model)
+
+    # TODO model = Pipeline(steps=(featureSelector, scaler, model))
+    if in_model.__class__.__name__ == 'SVC':
+        params = {'kernel': hp[0], 'C': hp[1], 'class_weight': 'balanced',
+                  'gamma': hp[6], 'shrinking': hp[7], 'tol': hp[8]}
+    elif in_model.__class__.__name__ == 'LogisticRegression':
         params = {'solver': hp[0], 'C': hp[1], 'class_weight': 'balanced'}
-    elif model.__class__.__name__ == 'DecisionTreeClassifier':
+    elif in_model.__class__.__name__ == 'DecisionTreeClassifier':
         params = {'splitter': hp[0], 'criterion': hp[1], 'class_weight': 'balanced'}
-    elif model.__class__.__name__ == 'KNeighborsClassifier':
+    elif in_model.__class__.__name__ == 'KNeighborsClassifier':
         params = {'algorithm': hp[0], 'n_neighbors': hp[1]}
-    elif model.__class__.__name__ == 'XGBClassifier':
+    elif in_model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': hp[0], 'min_child_weight': hp[1],
-                  'scale_pos_weight': 13, 'max_delta_step': 1,
-                  'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
+                  'scale_pos_weight': scale_pos_weight, 
+                  'max_delta_step': 1,
+                  'eval_metric':'aucpr', 'reg_alpha': hp[6],
+                  'learning_rate': hp[7], 'gamma': hp[8], 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
     # Typical value to consider is sum(negative instances) / sum(positive instances)
@@ -688,12 +706,29 @@ def fit_and_score(model, hp, data,
     else:
         params = {}
 
-    model.set_params(**params)
-    model.fit(X_train, y_train)
+    #TODO pipleine.set_params((params for model, for feature selector))
+    # model.__C__
+    # featureSelector.__
+
+    in_model.set_params(**params)
+    # TODO figure out how to pass eval_set to pipeline
+    # model.fit(X_train, y_train, 
+    #           eval_set=evals,
+    #           verbose=True
+    #         )
+    pipeline = Pipeline([
+        ('feature_selector', sel),
+        ('scaler', sc),  
+        ('classifier', in_model)
+    ])
+    pipeline.fit(X_train.to_pandas(), y_train.to_pandas())
+
     print('Training ... ')
 
-    metrics = calculate_metrics(model, test_set,
-                                scaler=sc, 
+    metrics = calculate_metrics(pipeline=pipeline,
+                                # in_model,
+                                test_set = test_set, #TODO pass pipeline instead of model and sc
+                                # scaler=sc, 
                                 index_columns=index_columns,
                                 tau=hp[4], threshold=hp[5], step=hp[3],
                                 #show=False,
@@ -701,26 +736,37 @@ def fit_and_score(model, hp, data,
                                 )
     
     score = metrics['f1_score_regularized']
+    # ev_result = model.evals_result()
+    # train_aucpr = ev_result['validation_0']['aucpr']
+    # val_aucpr = ev_result['validation_1']['aucpr']
+    train_aucpr = None
+    val_aucpr = None
+    evals_results = {
+        'train_aucpr': train_aucpr,
+        'val_aucpr': val_aucpr
+    }
 
     logger.info(f"\n\tInner CV loop: fit and evaluate one model; f1-score={score}%, ROC={metrics['roc_auc_score']}")
-    if model.__class__.__name__ == 'SVC':
+    if in_model.__class__.__name__ == 'SVC':
         logger.info(f'kernel:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'LogisticRegression':
+    elif in_model.__class__.__name__ == 'LogisticRegression':
         logger.info(f'solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'DecisionTreeClassifier':
+    elif in_model.__class__.__name__ == 'DecisionTreeClassifier':
         logger.info(f'splitter:{hp[0]}, criterion:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]},\
         threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'KNeighborsClassifier':
+    elif in_model.__class__.__name__ == 'KNeighborsClassifier':
         logger.info(f'algorithm:{hp[0]}, n_neighbors:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]},\
         threshold:{hp[5]}')
-    elif model.__class__.__name__ == 'XGBClassifier':
+    elif in_model.__class__.__name__ == 'XGBClassifier':
         logger.info(f'max_depth :{hp[0]}, min_child_weight :{hp[1]}, win_size:{hp[2]},\
         step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
 
-    return metrics
+    return {**metrics, **evals_results}
 
 
-def grid_search(model, hyperparams, data,
+def grid_search(model,
+                hyperparams:list, nb_rand_hp:int,
+                data,
                 inner_k: int, outer_fold_idx,
                 index_columns,
                 #feature_list
@@ -763,12 +809,17 @@ def grid_search(model, hyperparams, data,
     recall_hp = []
     f1_ovlp_hp = []
     roc_auc_hp = []
+    train_aucpr_hp = []
+    val_aucpr_hp = []
     latencies_hp = []
     #TP_SZ_overlap_hp = []
     far_hp = []
     tiw_hp = []
     percentage_tiw_hp = []
-    for j, hp in enumerate(hyperparams):
+
+    random_hyperparams = random.choices(hyperparams, k=nb_rand_hp)
+
+    for j, hp in enumerate(random_hyperparams):
         logger.info(f"\n  Grid search: evaluate hyperparameters = \
         solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]} ")
 
@@ -793,6 +844,8 @@ def grid_search(model, hyperparams, data,
             recall_hp.append(metrics['ovlp_recall'])
             f1_ovlp_hp.append(metrics['ovlp_f1'])
             roc_auc_hp.append(metrics['roc_auc_score'])
+            train_aucpr_hp.append(metrics['train_aucpr'])
+            val_aucpr_hp.append(metrics['val_aucpr'])
             #latencies_hp.append(np.nanmean(np.array(metrics['latencies'])))
             #TP_SZ_overlap_hp.append(np.nanmean(np.array(metrics['TP_SZ_overlap'])))
             #far_hp.append(np.nanmean(np.array(metrics['FAR'])))
@@ -821,6 +874,8 @@ def grid_search(model, hyperparams, data,
                 'roc_auc': np.nanmean(roc_auc_hp),
                 'precision_ovlp': np.nanmean(precision_hp),
                 'recall_ovlp': np.nanmean(recall_hp),
+                'train_aucpr': np.nanmean(train_aucpr_hp),
+                'val_aucpr': np.nanmean(val_aucpr_hp)
                 #'avg_TP_SZ_overlap': np.nanmean(TP_SZ_overlap_hp),
                 #'avg_far': np.nanmean(far_hp),
                 #'avg_tiw': np.nanmean(tiw_hp),
@@ -834,7 +889,7 @@ def grid_search(model, hyperparams, data,
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
-    best_hp = hyperparams[np.argmax(all_scores)]
+    best_hp = random_hyperparams[np.argmax(all_scores)]
     logger.info(f'Outer fold {outer_fold_idx} grid search finished')
     logger.info(f'\t ** Grid search: keep best hyperparameters combination = {best_hp} **')
     logger.info(f'\t ** Highest f1-score (regularized) from the grid search is {np.max(all_scores)}')
@@ -846,11 +901,18 @@ def grid_search(model, hyperparams, data,
     #y = data.iloc[:, -1]
     y = data.select('label')
 
+    n_neg = len(data.filter(pl.col("label")==False))
+    n_pos = len(data.filter(pl.col("label")==True))
+    scale_pos_weight = int(n_neg / n_pos)
+
+    sel = MRMR(method="FCQ", regression=False)
+
     sc = StandardScaler()
-    X = sc.fit_transform(X)
+    # X = sc.fit_transform(X)
 
     if model.__class__.__name__ == 'SVC':
-        params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'}
+        params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced',
+                  'gamma': best_hp[6], 'shrinking': best_hp[7], 'tol': best_hp[8]}
     elif model.__class__.__name__ == 'LogisticRegression':
         params = {'solver': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced'}
     elif model.__class__.__name__ == 'DecisionTreeClassifier':
@@ -859,8 +921,9 @@ def grid_search(model, hyperparams, data,
         params = {'algorithm': best_hp[0], 'n_neighbors': best_hp[1]}
     elif model.__class__.__name__ == 'XGBClassifier':
         params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
-                  'scale_pos_weight': 13, 'max_delta_step': 1,
-                  'learning_rate': 0.1, 'gamma': 0.1, 'booster': 'gbtree'}
+                  'scale_pos_weight': scale_pos_weight, 'max_delta_step': 1,
+                  'eval_metric':'aucpr', 'reg_alpha': best_hp[6],
+                  'learning_rate': best_hp[7], 'gamma': best_hp[8], 'booster': 'gbtree'}
     # TODO :find the scale pos weight for EEG datasets
     # NOTE: Since our dataset is imbalanced 
     # Typical value to consider is sum(negative instances) / sum(positive instances)
@@ -869,9 +932,20 @@ def grid_search(model, hyperparams, data,
     else:
         params = {}
     best_model.set_params(**params)
-    best_model.fit(X, y)
+    # best_model.fit(X, y)
+    out_pipeline = Pipeline([
+        ('feature_selector', sel),
+        ('scaler', sc),  
+        ('classifier', best_model)
+    ])
+    tt1 = datetime.datetime.now()
+    out_pipeline.fit(X.to_pandas(), y.to_pandas())
+    tt2 = datetime.datetime.now()
+    logger.info(f'\nTraining time for one model in outer fold is {tt2-tt1}')
+    print(f'\n\t\tTraining time for one model in outer fold is {tt2-tt1}')
 
-    return {'best_model': best_model, 'best_hyperparam': best_hp, 'scaler': sc}
+    return {'best_model': best_model, 'best_hyperparam': best_hp, 'scaler': sc,
+            'best_pipeline': out_pipeline}
 
 
 def cross_validate(model, hyperparams:list, data:pl.DataFrame,
@@ -950,11 +1024,15 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
     
 
         #X_test = test_set.select([pl.col(col) for col in feature_list])
-        X_test = test_set.drop(index_columns)
+        
         # or exclude non-features columns
         #X_test = test_set.select([col for col in test_set.columns if col not in nonfeature_list])
 
-        gridsearch_per_fold = grid_search(model, hyperparams, train_val_set, inner_k,
+        gridsearch_per_fold = grid_search(model, 
+                                          hyperparams = hyperparams, 
+                                          nb_rand_hp = 10,
+                                          data = train_val_set,
+                                          inner_k = inner_k,
                                           outer_fold_idx=i,
                                           index_columns=index_columns
                                           #home_path=home_path
@@ -962,11 +1040,20 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         best_model = gridsearch_per_fold['best_model']
         best_hp = gridsearch_per_fold['best_hyperparam']
         scaler = gridsearch_per_fold['scaler']
+        best_pipeline = gridsearch_per_fold['best_pipeline']
 
         model_name = f'fold_{i}_{clf}_{best_hp[0]}_{best_hp[1]}.sav'
-        pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb')) # TODO
+        pickle.dump(best_model, open(s.RESULTS_DIR / model_name, 'wb'))
+        pipeline_name = f'fold_{i}_pipeline_{best_hp[0]}_{best_hp[1]}.sav'
+        pickle.dump(best_pipeline, open(s.RESULTS_DIR / pipeline_name, 'wb'))
 
-        X_test = scaler.transform(X_test)
+        X_train = train_val_set.drop(index_columns)
+        # X_train = scaler.transform(X_train)
+        y_train = train_val_set.select('label')
+
+        X_test = test_set.drop(index_columns)
+        # X_test = scaler.transform(X_test)
+        y_test = test_set.select('label')
         
         # Make predictions and calculate performance metrics
         metrics = calculate_metrics(best_model, test_set,
@@ -978,6 +1065,33 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         
         train_subjects = "; ".join(map(str, train_val_set.select(pl.col("subject").unique()).to_series().to_list()))
         test_subjects = "; ".join(map(str, test_set.select(pl.col("subject").unique()).to_series().to_list()))
+
+        """out_model = clone(model)
+        if out_model.__class__.__name__ == 'SVC':
+            params = {'kernel': best_hp[0], 'C': best_hp[1], 'class_weight': 'balanced',
+                      'gamma': best_hp[6], 'shrinking': best_hp[7], 'tol': best_hp[8]}
+        elif out_model.__class__.__name__ == 'XGBClassifier':
+            params = {'max_depth': best_hp[0], 'min_child_weight': best_hp[1],
+                      'scale_pos_weight': 11, 'max_delta_step': 1,
+                      'eval_metric':'aucpr', 'reg_alpha': best_hp[6],
+                      'learning_rate': best_hp[7], 'gamma': best_hp[8], 'booster': 'gbtree'}
+
+        out_model.set_params(**params)  
+        # out_model.fit(X_train, y_train)
+        pipeline = Pipeline([
+            ('feature_selector', sel),
+            ('scaler', sc),  
+            ('classifier', out_model)
+        ])
+        pipeline.fit(X_train, y_train)"""
+
+        y_train_pred = best_pipeline.predict(X_train.to_pandas())
+        y_test_pred = best_pipeline.predict(X_test.to_pandas())
+
+        pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
+                                                    pos_label=1, average='binary', zero_division=0)
+        pres_test, rec_test, f1_test, _ = precision_recall_fscore_support(y_test, y_test_pred,
+                                                    pos_label=1, average='binary', zero_division=0)
 
         results_rows.append(
             {
@@ -999,6 +1113,12 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             'recall_ovlp': metrics['ovlp_recall'],
             'f1_score_regularized': metrics['f1_score_regularized'],
             'roc_auc_score': metrics['roc_auc_score'],
+            'precision_train': pres_train,
+            'precision_test': pres_test,
+            'recall_train': rec_train,
+            'recall_test': rec_test,
+            'f1_train': f1_train,
+            'f1_test': f1_test,
             #'latencies': metrics['latencies'],
             #'FAR_per_day': metrics['FAR'],
             #'Time_in_warning': metrics['Time_in_warning'],
