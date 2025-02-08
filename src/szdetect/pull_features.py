@@ -104,14 +104,15 @@ def pull_features(
     if inference:
         join_where_clause = "WHERE feature IN ?"
     else:
-        join_where_clause = """
+        where_clause = """
             JOIN label_rel AS l
                 ON f.subject = l.subject 
                 AND f.session = l.session 
                 AND f.run = l.run 
                 AND f.timestamp = l.timestamp
             WHERE feature IN ?"""
-        +(" AND l.training = TRUE" if train_only else "")
+        join_clause = " AND l.training = TRUE" if train_only else ""
+        join_where_clause = where_clause + join_clause
 
     # TODO: average over brain region if brain_region is not None
     query = f"""SELECT

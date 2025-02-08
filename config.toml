@@ -18,7 +18,7 @@ labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 features_config = "features_config.yaml"
 features_dir = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features_v4/"
 features_db_file = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features.db"
-num_workers = 12
+num_workers = 4
 overwrite = false
 log_dir = "logs/features_v4"
 

@@ -110,7 +110,7 @@ def main():
         if s.MAX_N_EEG > 0:
             random.seed(123)
             name_file_pairs = name_file_pairs[: s.MAX_N_EEG - 1]
-            name_file_pairs = random.shuffle(name_file_pairs)
+            random.shuffle(name_file_pairs)
 
         _ = calculate_over_pool(
             feature_extraction_pipeline,
