@@ -137,7 +137,8 @@ def pull_features(
                     f.timestamp, 
                     f.feature, 
                     f.freqs, 
-                    f.region_side
+                    f.region_side,
+                    l.unique_id
                     {", l.label" if not inference else ""}
             """
     df = duckdb.execute(query, [feature_list]).pl()

@@ -29,6 +29,7 @@ index_col = [
     "subject",
     "session",
     "run",
+    "unique_id",
     "label",
 ]
 
