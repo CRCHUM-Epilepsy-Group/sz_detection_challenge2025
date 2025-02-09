@@ -121,6 +121,7 @@ def pull_features(
                     f.subject,
                     f.session,
                     f.run,
+                    l.unique_id,
                     f.timestamp,
                     f.feature,
                     f.freqs,
