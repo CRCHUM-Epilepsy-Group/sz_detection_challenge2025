@@ -236,7 +236,7 @@ def ovlp(labels, predictions, step=1):
         """
     true_indexes = np.array([i for i, x in enumerate(labels) if x == 1])
     pred_indexes = np.array([i for i, x in enumerate(predictions) if x == 1])
-    th = int(20 / step)
+    th = int(20 / step) # TODO add tolerance as arg
     # NOTE: According to the evalutaion of the challenge, events seperated by <90s are merged.
 
     # seizures within 90s of each other are attributed to the same true event
@@ -671,7 +671,13 @@ def fit_and_score(model, hp, data,
     # y_test = test_set.select('label')
     n_neg = len(train_set.filter(pl.col("label")==False))
     n_pos = len(train_set.filter(pl.col("label")==True))
-    scale_pos_weight = int(n_neg / n_pos)
+
+    try:
+        scale_pos_weight = int(n_neg / n_pos)
+    except ZeroDivisionError:
+        scale_pos_weight = 1
+        logger.info('subset has no seizures')
+    
 
     sel = MRMR(method="FCQ", regression=False) #TODO take feature selector in args
 
@@ -721,7 +727,7 @@ def fit_and_score(model, hp, data,
         ('scaler', sc),  
         ('classifier', in_model)
     ])
-    pipeline.fit(X_train.to_pandas(), y_train.to_pandas())
+    pipeline.fit(X_train.to_pandas(), y_train.to_pandas().values.ravel())
 
     print('Training ... ')
 
@@ -739,8 +745,8 @@ def fit_and_score(model, hp, data,
     # ev_result = model.evals_result()
     # train_aucpr = ev_result['validation_0']['aucpr']
     # val_aucpr = ev_result['validation_1']['aucpr']
-    train_aucpr = None
-    val_aucpr = None
+    train_aucpr = []
+    val_aucpr = []
     evals_results = {
         'train_aucpr': train_aucpr,
         'val_aucpr': val_aucpr
@@ -903,7 +909,11 @@ def grid_search(model,
 
     n_neg = len(data.filter(pl.col("label")==False))
     n_pos = len(data.filter(pl.col("label")==True))
-    scale_pos_weight = int(n_neg / n_pos)
+    try:
+        scale_pos_weight = int(n_neg / n_pos)
+    except ZeroDivisionError:
+        scale_pos_weight = 1
+        logger.info('subset has no seizures')
 
     sel = MRMR(method="FCQ", regression=False)
 
@@ -939,7 +949,7 @@ def grid_search(model,
         ('classifier', best_model)
     ])
     tt1 = datetime.datetime.now()
-    out_pipeline.fit(X.to_pandas(), y.to_pandas())
+    out_pipeline.fit(X.to_pandas(), y.to_pandas().values.ravel())
     tt2 = datetime.datetime.now()
     logger.info(f'\nTraining time for one model in outer fold is {tt2-tt1}')
     print(f'\n\t\tTraining time for one model in outer fold is {tt2-tt1}')
@@ -1101,6 +1111,9 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             'model': model_name,
             'max_depth': best_hp[0],
             'min_child_weight': best_hp[1],
+            'reg_alpha': best_hp[6],
+            'learning_rate': best_hp[7],
+            'xgb_gamma': best_hp[8],
             'win_size': best_hp[2],
             'step': best_hp[3],
             'tau': best_hp[4],
