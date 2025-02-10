@@ -38,6 +38,7 @@ def pull_features(
     train_only: bool = True,
     inference: bool = False,
     num_eegs: int | None = None,
+    step_size: int = 4,
 ):
     """
     Extracts and filters features from Parquet files and joins them with labels.
@@ -126,7 +127,9 @@ def pull_features(
                     f.subject,
                     f.session,
                     f.run,
+                    f.unique_id,
                     f.timestamp,
+                    CAST(f.epoch AS INTEGER) * {step_size} AS second,
                     f.feature,
                     f.freqs,
                     AVG(f.value) AS value
@@ -138,9 +141,11 @@ def pull_features(
                     f.subject, 
                     f.session, 
                     f.run, 
-                    f.timestamp, 
+                    f.unique_id,
+                    f.timestamp,
+                    second,
                     f.feature, 
-                    f.freqs, 
+                    f.freqs,
                     f.region_side
                     {", l.unique_id, l.label" if not inference else ""}
             """
