@@ -17,7 +17,8 @@ df = pf.pull_features(
     feature_dir="./test_data/features_v4",
     label_file="./test_data/labels.parquet",
     feature_group="all",
-    train_only=True
+    # train_only=True,
+    num_eegs=3
     )
 print('pull_features successful')
 
