@@ -44,7 +44,7 @@ from szdetect import project_settings as s
 
 s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
 logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
-logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
+# logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 xgb.set_config(verbosity=0)
@@ -486,6 +486,8 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     #  Sample-based metrics to estimate performance on records that contain no seizures.
     try:
         assert len(true_ann) == len(pred_ann)
+        true_ann = np.array(true_ann, dtype=int)
+        pred_ann = np.array(pred_ann, dtype=int)
         pres_rec, rec_rec, f1_rec, support_rec = precision_recall_fscore_support(true_ann, pred_ann,
                                                                                  zero_division=0)
         supp = len(support_rec)
@@ -496,7 +498,9 @@ def predictions_per_record(test_dataset:pl.DataFrame,
         ## Tiw = {round(np.sum(tiw)/3600, 2)}h/{round(record_duration/3600,1)}h = {percentage_tiw}%
         logger.info(msg)
     except (AssertionError, ValueError) as error:
-        logger.error(f'ERROR {error} len(true_ann)={len(true_ann)}, len(pred_ann)={len(pred_ann)}',
+        logger.error(f'ERROR {error}',
+                     exc_info=True)
+        logger.error(f'unique_id {record_name} len(true_ann)={len(true_ann)}, len(pred_ann)={len(pred_ann)}',
                      exc_info=True)
 
     return {'OVLP': OVLP,
@@ -589,6 +593,8 @@ def calculate_metrics(pipeline,
     # sample-based, on all test dataset
     try:
         assert len(y_test) == len(y_hat)
+        y_hat = np.array(y_hat, dtype=int)
+        y_test = np.array(y_test, dtype=int)
         pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat,
                                                                              zero_division=0)
         s = len(support_rg)
@@ -601,6 +607,7 @@ def calculate_metrics(pipeline,
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
+            y_test = np.array(y_test, dtype=int)
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -733,7 +740,7 @@ def fit_and_score(model, hp, data,
 
     metrics = calculate_metrics(pipeline=pipeline,
                                 # in_model,
-                                test_set = test_set, #TODO pass pipeline instead of model and sc
+                                test_set = test_set,
                                 # scaler=sc, 
                                 index_columns=index_columns,
                                 tau=hp[4], threshold=hp[5], step=hp[3],
@@ -1066,10 +1073,13 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         y_test = test_set.select('label')
         
         # Make predictions and calculate performance metrics
-        metrics = calculate_metrics(best_model, test_set,
-                                    scaler=scaler, #scaled_X_test=X_test,
+        metrics = calculate_metrics(pipeline = best_pipeline,
+                                    # best_model, 
+                                    test_set = test_set,
+                                    # scaler=scaler, #scaled_X_test=X_test,
                                     index_columns=index_columns,
-                                    tau=best_hp[4], threshold=best_hp[5], step=best_hp[3],
+                                    tau=best_hp[4], threshold=best_hp[5],
+                                    step=best_hp[3],
                                     #show=False
                                     )
         
@@ -1098,6 +1108,10 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         y_train_pred = best_pipeline.predict(X_train.to_pandas())
         y_test_pred = best_pipeline.predict(X_test.to_pandas())
 
+        y_train = np.array(y_train, dtype=int)
+        y_train_pred = np.array(y_train_pred, dtype=int)
+        y_test = np.array(y_test, dtype=int)
+        y_test_pred = np.array(y_test_pred, dtype=int)
         pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
                                                     pos_label=1, average='binary', zero_division=0)
         pres_test, rec_test, f1_test, _ = precision_recall_fscore_support(y_test, y_test_pred,
