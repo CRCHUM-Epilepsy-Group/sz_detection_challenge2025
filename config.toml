@@ -4,8 +4,8 @@ name = 'sz_detection_challenge'
 
 [datasets]
 # Paths to BIDS datasets
-# tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
-# chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
+tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
+chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
 siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
 
 [utilities]
@@ -18,7 +18,7 @@ labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 features_config = "features_config.yaml"
 features_dir = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features_v4/"
 features_db_file = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features.db"
-num_workers = 6
+num_workers = 10
 overwrite = false
 log_dir = "logs/features_v4"
 
@@ -29,7 +29,7 @@ filter_eeg.l_freq = 1
 filter_eeg.h_freq = 99
 filter_eeg.notch = -1
 segment_eeg.window_duration = 10
-segment_eeg.step_size = 12
+segment_eeg.step_size = 4
 
 [results]
 results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
