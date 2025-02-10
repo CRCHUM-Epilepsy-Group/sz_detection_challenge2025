@@ -133,7 +133,7 @@ def pull_features(
                     f.feature,
                     f.freqs,
                     AVG(f.value) AS value
-                    {", l.unique_id, l.label" if not inference else ""}
+                    {", l.label" if not inference else ""}
                 FROM feature_rel AS f
                 {join_where_clause}
                 GROUP BY
@@ -143,11 +143,12 @@ def pull_features(
                     f.run, 
                     f.unique_id,
                     f.timestamp,
-                    second,
+                    f.second,
                     f.feature, 
                     f.freqs,
-                    f.region_side
-                    {", l.unique_id, l.label" if not inference else ""}
+                    f.region_side,
+                    f.epoch
+                    {", l.label" if not inference else ""}
             """
     df = duckdb.execute(query, [feature_list]).pl()
 
