@@ -9,11 +9,6 @@ import epileptology.preprocessing as pp
 from szdetect import project_settings as s
 from pathlib import Path
 
-os.environ["INPUT"] = (
-    # 395MB file
-    "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena/sub-14/ses-01/eeg/sub-14_ses-01_task-szMonitoring_run-02_eeg.edf"
-)
-
 
 def main():
     console = Console()
@@ -21,7 +16,8 @@ def main():
     if in_docker:
         edf_file = f"/data/{os.environ.get('INPUT')}"
     else:
-        edf_file = f"{os.environ.get('INPUT')}"
+        # 395MB file
+        edf_file = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena/sub-14/ses-01/eeg/sub-14_ses-01_task-szMonitoring_run-02_eeg.edf"
     dataset_name = "test_set"
 
     eeg = pp.read_edf(edf_file, **s.PREPROCESSING_KWARGS["read_edf"])
