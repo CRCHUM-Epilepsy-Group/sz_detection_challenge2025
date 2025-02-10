@@ -44,7 +44,7 @@ from szdetect import project_settings as s
 
 s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
 logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
-logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
+# logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 xgb.set_config(verbosity=0)
@@ -236,7 +236,7 @@ def ovlp(labels, predictions, step=1):
         """
     true_indexes = np.array([i for i, x in enumerate(labels) if x == 1])
     pred_indexes = np.array([i for i, x in enumerate(predictions) if x == 1])
-    th = int(20 / step)
+    th = int(20 / step) # TODO add tolerance as arg
     # NOTE: According to the evalutaion of the challenge, events seperated by <90s are merged.
 
     # seizures within 90s of each other are attributed to the same true event
@@ -486,6 +486,8 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     #  Sample-based metrics to estimate performance on records that contain no seizures.
     try:
         assert len(true_ann) == len(pred_ann)
+        true_ann = np.array(true_ann, dtype=int)
+        pred_ann = np.array(pred_ann, dtype=int)
         pres_rec, rec_rec, f1_rec, support_rec = precision_recall_fscore_support(true_ann, pred_ann,
                                                                                  zero_division=0)
         supp = len(support_rec)
@@ -496,7 +498,9 @@ def predictions_per_record(test_dataset:pl.DataFrame,
         ## Tiw = {round(np.sum(tiw)/3600, 2)}h/{round(record_duration/3600,1)}h = {percentage_tiw}%
         logger.info(msg)
     except (AssertionError, ValueError) as error:
-        logger.error(f'ERROR {error} len(true_ann)={len(true_ann)}, len(pred_ann)={len(pred_ann)}',
+        logger.error(f'ERROR {error}',
+                     exc_info=True)
+        logger.error(f'unique_id {record_name} len(true_ann)={len(true_ann)}, len(pred_ann)={len(pred_ann)}',
                      exc_info=True)
 
     return {'OVLP': OVLP,
@@ -589,6 +593,8 @@ def calculate_metrics(pipeline,
     # sample-based, on all test dataset
     try:
         assert len(y_test) == len(y_hat)
+        y_hat = np.array(y_hat, dtype=int)
+        y_test = np.array(y_test, dtype=int)
         pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat,
                                                                              zero_division=0)
         s = len(support_rg)
@@ -601,6 +607,7 @@ def calculate_metrics(pipeline,
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
+            y_test = np.array(y_test, dtype=int)
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -671,7 +678,13 @@ def fit_and_score(model, hp, data,
     # y_test = test_set.select('label')
     n_neg = len(train_set.filter(pl.col("label")==False))
     n_pos = len(train_set.filter(pl.col("label")==True))
-    scale_pos_weight = int(n_neg / n_pos)
+
+    try:
+        scale_pos_weight = int(n_neg / n_pos)
+    except ZeroDivisionError:
+        scale_pos_weight = 1
+        logger.info('subset has no seizures')
+    
 
     sel = MRMR(method="FCQ", regression=False) #TODO take feature selector in args
 
@@ -721,13 +734,13 @@ def fit_and_score(model, hp, data,
         ('scaler', sc),  
         ('classifier', in_model)
     ])
-    pipeline.fit(X_train.to_pandas(), y_train.to_pandas())
+    pipeline.fit(X_train.to_pandas(), y_train.to_pandas().values.ravel())
 
     print('Training ... ')
 
     metrics = calculate_metrics(pipeline=pipeline,
                                 # in_model,
-                                test_set = test_set, #TODO pass pipeline instead of model and sc
+                                test_set = test_set,
                                 # scaler=sc, 
                                 index_columns=index_columns,
                                 tau=hp[4], threshold=hp[5], step=hp[3],
@@ -739,8 +752,8 @@ def fit_and_score(model, hp, data,
     # ev_result = model.evals_result()
     # train_aucpr = ev_result['validation_0']['aucpr']
     # val_aucpr = ev_result['validation_1']['aucpr']
-    train_aucpr = None
-    val_aucpr = None
+    train_aucpr = []
+    val_aucpr = []
     evals_results = {
         'train_aucpr': train_aucpr,
         'val_aucpr': val_aucpr
@@ -903,7 +916,11 @@ def grid_search(model,
 
     n_neg = len(data.filter(pl.col("label")==False))
     n_pos = len(data.filter(pl.col("label")==True))
-    scale_pos_weight = int(n_neg / n_pos)
+    try:
+        scale_pos_weight = int(n_neg / n_pos)
+    except ZeroDivisionError:
+        scale_pos_weight = 1
+        logger.info('subset has no seizures')
 
     sel = MRMR(method="FCQ", regression=False)
 
@@ -939,7 +956,7 @@ def grid_search(model,
         ('classifier', best_model)
     ])
     tt1 = datetime.datetime.now()
-    out_pipeline.fit(X.to_pandas(), y.to_pandas())
+    out_pipeline.fit(X.to_pandas(), y.to_pandas().values.ravel())
     tt2 = datetime.datetime.now()
     logger.info(f'\nTraining time for one model in outer fold is {tt2-tt1}')
     print(f'\n\t\tTraining time for one model in outer fold is {tt2-tt1}')
@@ -1056,10 +1073,13 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         y_test = test_set.select('label')
         
         # Make predictions and calculate performance metrics
-        metrics = calculate_metrics(best_model, test_set,
-                                    scaler=scaler, #scaled_X_test=X_test,
+        metrics = calculate_metrics(pipeline = best_pipeline,
+                                    # best_model, 
+                                    test_set = test_set,
+                                    # scaler=scaler, #scaled_X_test=X_test,
                                     index_columns=index_columns,
-                                    tau=best_hp[4], threshold=best_hp[5], step=best_hp[3],
+                                    tau=best_hp[4], threshold=best_hp[5],
+                                    step=best_hp[3],
                                     #show=False
                                     )
         
@@ -1088,6 +1108,10 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         y_train_pred = best_pipeline.predict(X_train.to_pandas())
         y_test_pred = best_pipeline.predict(X_test.to_pandas())
 
+        y_train = np.array(y_train, dtype=int)
+        y_train_pred = np.array(y_train_pred, dtype=int)
+        y_test = np.array(y_test, dtype=int)
+        y_test_pred = np.array(y_test_pred, dtype=int)
         pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
                                                     pos_label=1, average='binary', zero_division=0)
         pres_test, rec_test, f1_test, _ = precision_recall_fscore_support(y_test, y_test_pred,
@@ -1101,6 +1125,9 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             'model': model_name,
             'max_depth': best_hp[0],
             'min_child_weight': best_hp[1],
+            'reg_alpha': best_hp[6],
+            'learning_rate': best_hp[7],
+            'xgb_gamma': best_hp[8],
             'win_size': best_hp[2],
             'step': best_hp[3],
             'tau': best_hp[4],

@@ -21,6 +21,7 @@ df = pf.pull_features(
     label_file=s.LABELS_FILE,
     feature_group="all",
     train_only=True,
+    num_eegs=1000
 )
 
 index_col = [
@@ -29,6 +30,7 @@ index_col = [
     "subject",
     "session",
     "run",
+    "unique_id",
     "label",
 ]
 
