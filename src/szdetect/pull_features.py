@@ -1,4 +1,5 @@
 import duckdb
+import random
 from pathlib import Path
 
 FEATURE_GROUPS = {
@@ -36,6 +37,7 @@ def pull_features(
     feature_group: str = "all",
     train_only: bool = True,
     inference: bool = False,
+    num_eegs: int | None = None,
 ):
     """
     Extracts and filters features from Parquet files and joins them with labels.
@@ -83,8 +85,11 @@ def pull_features(
     """
     feature_dir = Path(feature_dir)
     feature_files = [str(f) for f in feature_dir.glob("*.parquet")]
+    if num_eegs is not None:
+        random.shuffle(feature_files)
+        feature_files = feature_files[:num_eegs]
 
-    feature_rel = duckdb.read_parquet(feature_files)
+    feature_rel = duckdb.read_parquet(feature_files)  # type: ignore
 
     # TODO: add parameter to avoid loading features (inference = True)
     if inference:
@@ -104,14 +109,15 @@ def pull_features(
     if inference:
         join_where_clause = "WHERE feature IN ?"
     else:
-        join_where_clause = """
+        where_clause = """
             JOIN label_rel AS l
                 ON f.subject = l.subject 
                 AND f.session = l.session 
                 AND f.run = l.run 
                 AND f.timestamp = l.timestamp
             WHERE feature IN ?"""
-        +(" AND l.training = TRUE" if train_only else "")
+        join_clause = " AND l.training = TRUE" if train_only else ""
+        join_where_clause = where_clause + join_clause
 
     # TODO: average over brain region if brain_region is not None
     query = f"""SELECT
@@ -120,6 +126,7 @@ def pull_features(
                     f.subject,
                     f.session,
                     f.run,
+                    l.unique_id,
                     f.timestamp,
                     f.feature,
                     f.freqs,
