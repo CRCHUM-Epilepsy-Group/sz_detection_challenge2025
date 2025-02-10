@@ -112,19 +112,29 @@ def main():
             name_file_pairs = name_file_pairs[: s.MAX_N_EEG - 1]
             random.shuffle(name_file_pairs)
 
-        _ = calculate_over_pool(
-            feature_extraction_pipeline,
-            name_file_pairs,
-            num_workers=s.NUM_WORKERS,
-            debug=s.DEBUG,
-            features=s.FEATURES,
-            frameworks=s.FRAMEWORKS,
-            segmenting_function=pp.segment_overlapping_windows,
-            preprocessing_kwargs=s.PREPROCESSING_KWARGS,
-            chunksize=4,
-            n_jobs=len(name_file_pairs),
-            console=console,
-        )
+        # _ = calculate_over_pool(
+        #     feature_extraction_pipeline,
+        #     name_file_pairs,
+        #     num_workers=s.NUM_WORKERS,
+        #     debug=s.DEBUG,
+        #     features=s.FEATURES,
+        #     frameworks=s.FRAMEWORKS,
+        #     segmenting_function=pp.segment_overlapping_windows,
+        #     preprocessing_kwargs=s.PREPROCESSING_KWARGS,
+        #     chunksize=4,
+        #     n_jobs=len(name_file_pairs),
+        #     console=console,
+        # )
+
+        for name_file_pair in name_file_pairs:
+            feature_extraction_pipeline(
+                name_file_pair,
+                features=s.FEATURES,
+                frameworks=s.FRAMEWORKS,
+                segmenting_function=pp.segment_overlapping_windows,
+                preprocessing_kwargs=s.PREPROCESSING_KWARGS,
+                num_workers=s.NUM_WORKERS,
+            )
 
 
 if __name__ == "__main__":
