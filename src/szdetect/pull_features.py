@@ -1,4 +1,5 @@
 import duckdb
+import random
 from pathlib import Path
 
 FEATURE_GROUPS = {
@@ -36,6 +37,7 @@ def pull_features(
     feature_group: str = "all",
     train_only: bool = True,
     inference: bool = False,
+    num_eegs: int | None = None,
 ):
     """
     Extracts and filters features from Parquet files and joins them with labels.
@@ -83,8 +85,11 @@ def pull_features(
     """
     feature_dir = Path(feature_dir)
     feature_files = [str(f) for f in feature_dir.glob("*.parquet")]
+    if num_eegs is not None:
+        random.shuffle(feature_files)
+        feature_files = feature_files[:num_eegs]
 
-    feature_rel = duckdb.read_parquet(feature_files)
+    feature_rel = duckdb.read_parquet(feature_files)  # type: ignore
 
     # TODO: add parameter to avoid loading features (inference = True)
     if inference:
