@@ -33,6 +33,12 @@ duration = 66 * 60
 ref = Annotation([(8 * 60, 12 * 60), (30 * 60, 35 * 60), (48 * 60, 50 * 60)], fs, duration)
 #hyp = Annotation([(8 * 60, 12 * 60), (28 * 60, 32 * 60), (50.5 * 60, 51 * 60), (60 * 60, 62 * 60)], fs, duration)
 hyp = Annotation([(8 * 60, 12 * 60), (32 * 60, 51 * 60)], fs, duration)
+#hyp = Annotation([(8 * 60, 12 * 60), (28 * 60, 32 * 60), (50.5 * 60, 51 * 60), (60 * 60, 62 * 60)], fs, duration)
+ref = Annotation([False, False, False, True, True, False, False, False], fs=0.05)
+hyp = Annotation([False, False, False, False, True, True, False, False], fs=0.05)
+# ref = Annotation([(8 * 60, 12 * 60)], fs, duration)
+# hyp = Annotation([], fs, duration)
+
 scores = scoring.SampleScoring(ref, hyp)
 figSamples = visualization.plotSampleScoring(ref, hyp)
 print(ref)
@@ -40,10 +46,10 @@ print(hyp)
 # Scores can also be computed per event
 param = scoring.EventScoring.Parameters(
     toleranceStart=30,
-    toleranceEnd=60,
+    toleranceEnd=30,
     minOverlap=0,
     maxEventDuration=5 * 60,
-    minDurationBetweenEvents=90)
+    minDurationBetweenEvents=60)
 scores = scoring.EventScoring(ref, hyp, param)
 figEvents = visualization.plotEventScoring(ref, hyp, param)
 

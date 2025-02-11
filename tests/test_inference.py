@@ -1,6 +1,11 @@
 import pickle
 import polars as pl
 import numpy as np
+
+from timescoring import scoring
+from timescoring import visualization
+from timescoring.annotations import Annotation
+
 from szdetect import pull_features as pf
 # from szdetect import project_settings as s
 # from szdetect import model as mod
@@ -76,6 +81,8 @@ tolerance = 5
 tau = 3
 threshold = 0.65
 
+
+# TODO : optimize tau and threshold here 
 datasets = wide_df.select("dataset_name").unique().to_series().to_list()
 for dataset in datasets:
 # for dataset in ['tuh_sz_bids']:
@@ -103,6 +110,9 @@ for dataset in datasets:
         y_pred = np.array(y_pred, dtype=int)
         y_pred_fp = firing_power(y_pred, tau=tau)
         y_pred_reg = np.array([1 if x >= threshold else 0 for x in y_pred_fp])
+
+        # store if df 
+        """ 
         pred_indexes = np.array([i for i, x in enumerate(y_pred_reg) if x == 1])
         pred_events = dict(enumerate(grouper(pred_indexes, thres=tolerance), 1))
         
@@ -118,6 +128,7 @@ for dataset in datasets:
                 offset = df_pred[offset_idx]["timestamp"][0]
                 dt = offset - onset
                 duration = dt.total_seconds()
+        """
 
                     
 
