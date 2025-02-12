@@ -363,6 +363,7 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     
     #fs = 256
     test_rec = test_dataset.filter(pl.col('unique_id')==record_id)
+    test_rec = test_rec.sort("second")
     record_name = test_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
     
     X_test_rec = test_rec.drop(index_columns)
