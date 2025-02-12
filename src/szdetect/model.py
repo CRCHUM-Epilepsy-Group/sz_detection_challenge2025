@@ -1016,7 +1016,10 @@ def grid_search(model,
             'best_pipeline': out_pipeline}
 
 
-def cross_validate(model, hyperparams:list, data:pl.DataFrame,
+def cross_validate(model, 
+                   hyperparams:list, 
+                   nb_rand_hp:int,
+                   data:pl.DataFrame,
                    k:int, inner_k:int,
                    index_columns:list,
                    #feature_group: str = 'all',
@@ -1098,7 +1101,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
 
         gridsearch_per_fold = grid_search(model, 
                                           hyperparams = hyperparams, 
-                                          nb_rand_hp = 10,
+                                          nb_rand_hp = nb_rand_hp,
                                           data = train_val_set,
                                           inner_k = inner_k,
                                           outer_fold_idx=i,

@@ -21,7 +21,7 @@ df = pf.pull_features(
     label_file=s.LABELS_FILE,
     feature_group="all",
     train_only=True,
-    num_eegs=1000
+    num_eegs=10
 )
 
 index_col = [
@@ -88,6 +88,7 @@ outer_k, inner_k = 3, 5
 print('Init cross validation')
 scores = mod.cross_validate(model = model, #TODO replace "xgb"
                             hyperparams=all_combinations,
+                            nb_rand_hp=10,
                             data=wide_df,
                             k=outer_k, inner_k=inner_k,
                             index_columns=index_col, 
