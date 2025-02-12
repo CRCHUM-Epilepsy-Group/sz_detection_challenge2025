@@ -1,5 +1,5 @@
 FROM python:3.11
-COPY --from=ghcr.io/astral-sh/uv:0.5.9 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.5.29 /uv /uvx /bin/
 
 # Install cmake for epileptology further down
 RUN apt-get -y update \
@@ -32,7 +32,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 RUN uv pip install -e .
 
 # Install epileptology package
-RUN uv pip install /app/epileptology
+RUN --mount=type=bind,source=epileptology,target=/pkg/epileptology \
+    uv pip install /pkg/epileptology
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
@@ -46,5 +47,4 @@ ENV INPUT=""
 ENV OUTPUT=""
 ENV IN_DOCKER=1
 
-# Run the pipeline (to change later!)
-CMD ["uv", "run", "test_main.py"]
+CMD ["uv", "run", "main.py"]

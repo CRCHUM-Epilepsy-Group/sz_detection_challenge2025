@@ -3,14 +3,22 @@ services:
     build:
       context: .
       ulimits:
+        # fixes some issues when building
         nofile:
           soft: 10000
           hard: 10000
     image: sz_detection:latest
     container_name: sz_CRCHUM
     environment:
-      - INPUT=""
-      - OUTPUT=""
+      # - INPUT=BIDS_tuh_eeg_seizure/sub-126/ses-05/eeg/sub-126_ses-05_task-szMonitoring_run-00_eeg.edf
+      - INPUT=BIDS_Siena/sub-12/ses-01/eeg/sub-12_ses-01_task-szMonitoring_run-01_eeg.edf
+      - OUTPUT=sub-12_ses-01_task-szMonitoring_run-01_eeg.tsv
     volumes:
-      - /path/to/data:/input
+      # - /path/to/data:/data
+      - /mnt/data/SeizureDetectionChallenge2025:/data
       - ./output:/output
+    deploy:
+      resources:
+        limits:
+          cpus: 20
+          memory: 50G

@@ -2,7 +2,7 @@ import subprocess
 
 
 def main() -> None:
-    subprocess.run(["uv", "run", "02-feature_extraction.py"])
+    subprocess.run(["uv", "run", "04-features_for_inference.py"])
     subprocess.run(["uv", "run", "06-inference.py"])
 
 
