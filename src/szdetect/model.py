@@ -401,9 +401,9 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     Durations = Durations.replace("[", "").replace("]", "").split(', ') if not (pd.isna(Durations)) else []
     Durations = [int(x) for x in Durations]
     """
-    true_ann = np.array(test_rec['label'], dtype=int)
+    true_ann = np.array(test_rec['label'], dtype=bool)
     pred_ann = np.array(reg_pred)
-    pred_ann = np.array([1 if x >= threshold else 0 for x in pred_ann], dtype=int)
+    pred_ann = np.array([True if x >= threshold else False for x in pred_ann], dtype=bool)
     # TODO adapt type to bool
     assert step > 0 
     fs = 1 / step
@@ -503,8 +503,8 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     #  Sample-based metrics to estimate performance on records that contain no seizures.
     try:
         assert len(true_ann) == len(pred_ann)
-        true_ann = np.array(true_ann, dtype=int)
-        pred_ann = np.array(pred_ann, dtype=int)
+        true_ann = np.array(true_ann, dtype=bool)
+        pred_ann = np.array(pred_ann, dtype=bool)
         pres_rec, rec_rec, f1_rec, support_rec = precision_recall_fscore_support(true_ann, pred_ann,
                                                                                  zero_division=0)
         supp = len(support_rec)
@@ -619,8 +619,8 @@ def calculate_metrics(pipeline,
     # sample-based, on all test dataset
     try:
         assert len(y_test) == len(y_hat_reg)
-        y_hat_reg = np.array(y_hat_reg, dtype=int)
-        y_test = np.array(y_test, dtype=int)
+        y_hat_reg = np.array(y_hat_reg, dtype=bool)
+        y_test = np.array(y_test, dtype=bool)
         pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat_reg,
                                                                              zero_division=0)
         s = len(support_rg)
@@ -633,7 +633,7 @@ def calculate_metrics(pipeline,
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
-            y_test = np.array(y_test, dtype=int)
+            y_test = np.array(y_test, dtype=bool)
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -1109,6 +1109,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         X_test = test_set.drop(index_columns)
         # X_test = scaler.transform(X_test)
         y_test = test_set.select('label')
+
         
         # Make predictions and calculate performance metrics
         metrics = calculate_metrics(pipeline = best_pipeline,
@@ -1146,14 +1147,17 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         y_train_pred = best_pipeline.predict(X_train.to_pandas())
         y_test_pred = best_pipeline.predict(X_test.to_pandas())
 
-        y_train = np.array(y_train, dtype=int)
-        y_train_pred = np.array(y_train_pred, dtype=int)
-        y_test = np.array(y_test, dtype=int)
-        y_test_pred = np.array(y_test_pred, dtype=int)
+        y_train = np.array(y_train, dtype=bool)
+        y_train_pred = np.array(y_train_pred, dtype=bool)
+        y_test = np.array(y_test, dtype=bool)
+        y_test_pred = np.array(y_test_pred, dtype=bool)
         pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
                                                     pos_label=1, average='binary', zero_division=0)
         pres_test, rec_test, f1_test, _ = precision_recall_fscore_support(y_test, y_test_pred,
                                                     pos_label=1, average='binary', zero_division=0)
+
+        df_pred = test_set.select(index_columns).with_row_index()
+        df_pred = df_pred.with_columns(pl.Series("y_pred", y_test_pred))
 
         results_rows.append(
             {
@@ -1214,9 +1218,12 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         all_scores.append(metrics['ovlp_f1'])
         df_roc_curves = pl.concat([df_roc_curves, df_roc], how="vertical")
 
+        s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)
+        df_pred.write_parquet(s.RESULTS_DIR / f'fold_{i}_y_pred_test.parquet')
+
     df_results = pl.DataFrame(results_rows)
 
-    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO put back
+    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True) 
     df_results_pd = df_results.to_pandas()
     df_results_pd.to_csv(s.RESULTS_DIR / "cv_results.csv", index=False)
     df_roc_curves_pd = df_roc_curves.to_pandas()
