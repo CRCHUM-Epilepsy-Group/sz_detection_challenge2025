@@ -859,7 +859,11 @@ def grid_search(model,
     roc_auc_hp = []
     train_aucpr_hp = []
     val_aucpr_hp = []
-    latencies_hp = []
+    ts_f1_hp = []
+    ts_precision_hp = []
+    ts_recall_hp = []
+    ts_fpRate_hp = []
+    
     #TP_SZ_overlap_hp = []
     far_hp = []
     tiw_hp = []
@@ -894,6 +898,10 @@ def grid_search(model,
             roc_auc_hp.append(metrics['roc_auc_score'])
             train_aucpr_hp.append(metrics['train_aucpr'])
             val_aucpr_hp.append(metrics['val_aucpr'])
+            ts_f1_hp.append(metrics['ts_f1'])
+            ts_precision_hp.append(metrics['ts_precision'])
+            ts_recall_hp.append(metrics['ts_recall'])
+            ts_fpRate_hp.append(metrics['ts_fpRate'])
             #latencies_hp.append(np.nanmean(np.array(metrics['latencies'])))
             #TP_SZ_overlap_hp.append(np.nanmean(np.array(metrics['TP_SZ_overlap'])))
             #far_hp.append(np.nanmean(np.array(metrics['FAR'])))
@@ -923,7 +931,11 @@ def grid_search(model,
                 'precision_ovlp': np.nanmean(precision_hp),
                 'recall_ovlp': np.nanmean(recall_hp),
                 'train_aucpr': np.nanmean(train_aucpr_hp),
-                'val_aucpr': np.nanmean(val_aucpr_hp)
+                'val_aucpr': np.nanmean(val_aucpr_hp),
+                'ts_f1_hp': np.nanmean(ts_f1_hp),
+                'ts_precision': np.nanmean(ts_precision_hp),
+                'ts_recall': np.nanmean(ts_recall_hp),
+                'ts_fpRate': np.nanmean(ts_fpRate_hp)
                 #'avg_TP_SZ_overlap': np.nanmean(TP_SZ_overlap_hp),
                 #'avg_far': np.nanmean(far_hp),
                 #'avg_tiw': np.nanmean(tiw_hp),
