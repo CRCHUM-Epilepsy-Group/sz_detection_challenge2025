@@ -634,7 +634,6 @@ def calculate_metrics(pipeline,
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
-            y_test = np.array(y_test, dtype=bool)
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -651,6 +650,10 @@ def calculate_metrics(pipeline,
         fpr, tpr, thresholds = np.array([]), np.array([]), np.array([])
 
     y_pred = pipeline.predict(X_test.to_pandas())
+    y_pred = np.array(y_pred, dtype=bool)
+    precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred,
+                                                               pos_label=1, average='binary',
+                                                               zero_division=0)
 
     return {'f1_score_regularized': f1_rg,  # sample-based
             'precision_regularized': pres_rg,  # sample-based
@@ -665,8 +668,10 @@ def calculate_metrics(pipeline,
             'ts_precision': float("{:.4f}".format(np.nanmean(ts_precision))),  # ts event-based
             'ts_recall': float("{:.4f}".format(np.nanmean(ts_recall))),  # ts event-based
             'ts_fpRate': float("{:.4f}".format(np.nanmean(ts_fpRate))),  # ts event-based
-            'y_pred': y_pred
-            
+            'y_pred': y_pred,
+            'epoch_precision': precision,
+            'epoch_recall': recall,
+            'epoch_f1': f1
             #'latencies': latencies,  # event-based
             #'TP_SZ_overlap': TP_SZ_overlap,  # event-based
             #'FAR': FAR,  # event-based
@@ -783,7 +788,7 @@ def fit_and_score(model, hp, data,
                                 #home_path=home_path
                                 )
     
-    score = metrics['f1_score_regularized']
+    score = metrics['epoch_f1']
     # ev_result = model.evals_result()
     # train_aucpr = ev_result['validation_0']['aucpr']
     # val_aucpr = ev_result['validation_1']['aucpr']
@@ -850,12 +855,13 @@ def grid_search(model,
     #step = hyperparams[0][3]
     clf = model.__class__.__name__
 
-    all_scores = []
+    all_epoch_f1_scores = []
     FA_hp = []
     MA_hp = []
     precision_hp = []
     recall_hp = []
     f1_ovlp_hp = []
+    f1_reg_hp = []
     roc_auc_hp = []
     train_aucpr_hp = []
     val_aucpr_hp = []
@@ -875,7 +881,7 @@ def grid_search(model,
         logger.info(f"\n  Grid search: evaluate hyperparameters = \
         solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]} ")
 
-        scores_hp = []
+        epoch_f1_scores_hp = []
         splits = get_train_test_splits(data[['subject']], inner_k)
         for split in splits:
             metrics = fit_and_score(model, hp, data,
@@ -886,8 +892,8 @@ def grid_search(model,
                                     #home_path=home_path
                                     )
 
-            score = metrics['f1_score_regularized']  # sample-based
-            scores_hp.append(score)
+            epoch_f1_score = metrics['epoch_f1']  # sample-based
+            epoch_f1_scores_hp.append(epoch_f1_score)
 
             # Event-based metrics
             FA_hp.append(metrics['ovlp_FA'])
@@ -895,6 +901,7 @@ def grid_search(model,
             precision_hp.append(metrics['ovlp_precision'])
             recall_hp.append(metrics['ovlp_recall'])
             f1_ovlp_hp.append(metrics['ovlp_f1'])
+            f1_reg_hp.append(metrics['f1_score_regularized'])
             roc_auc_hp.append(metrics['roc_auc_score'])
             train_aucpr_hp.append(metrics['train_aucpr'])
             val_aucpr_hp.append(metrics['val_aucpr'])
@@ -910,7 +917,7 @@ def grid_search(model,
 
         # NOTE: scoring used for hyperparameter tuning is f1-score calculated as sample-based.
         # DO NOT use regularized f1-score to optimize hyperparameter search
-        all_scores.append(np.nanmean(scores_hp))
+        all_epoch_f1_scores.append(np.nanmean(epoch_f1_scores_hp))
 
         inner_cv_results_rows.append(
             {
@@ -925,7 +932,8 @@ def grid_search(model,
                 #'avg_latency': np.nanmean(latencies_hp),
                 'total_false_alarms': np.nanmean(FA_hp),
                 'total_missed_alarms': np.nanmean(MA_hp),
-                'f1_score_regularized': np.nanmean(scores_hp),
+                'epoch_f1_score': np.nanmean(all_epoch_f1_scores),
+                'f1_score_regularized': np.nanmean(f1_reg_hp),
                 'f1_score_ovlp': np.nanmean(f1_ovlp_hp),
                 'roc_auc': np.nanmean(roc_auc_hp),
                 'precision_ovlp': np.nanmean(precision_hp),
@@ -949,14 +957,14 @@ def grid_search(model,
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
-    best_hp = random_hyperparams[np.argmax(all_scores)]
+    best_hp = random_hyperparams[np.argmax(all_epoch_f1_scores)]
     # TODO : optimize on sample-based f1-score
     # TODO : keep track of timescoring
     # TODO : increase grid search
     # TODO : add sample-based f1-score on inner folds for each hyp combination to see if it correlates with the best chosen
     logger.info(f'Outer fold {outer_fold_idx} grid search finished')
     logger.info(f'\t ** Grid search: keep best hyperparameters combination = {best_hp} **')
-    logger.info(f'\t ** Highest f1-score (regularized) from the grid search is {np.max(all_scores)}')
+    logger.info(f'\t ** Highest f1-score (epoch-based) from the grid search is {np.max(all_epoch_f1_scores)}')
     best_model = clone(model)
 
     #X = data.iloc[:, 4:-1]
