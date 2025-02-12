@@ -13,9 +13,16 @@ def main():
         label_file=s.LABELS_FILE,
         feature_group="all",
         inference=True,
+        num_eegs=1000
     )
 
-    index_col = ["dataset_name", "subject", "session", "run", "timestamp"]
+    index_col = [
+        "timestamp",
+        "dataset_name",
+        "subject",
+        "session",
+        "run",
+    ]
 
     feature_col = ["region_side", "freqs", "feature"]
 
