@@ -25,12 +25,13 @@ df = pf.pull_features(
 )
 
 index_col = [
-    "timestamp",
     "dataset_name",
     "subject",
     "session",
     "run",
     "unique_id",
+    "timestamp",
+    "second",
     "label",
 ]
 

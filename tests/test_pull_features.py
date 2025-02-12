@@ -13,9 +13,10 @@ from szdetect import pull_features as pf
 # from szdetect import project_settings as s
 
 print('Imports successful')
+home_dir = "/mnt/data/SeizureDetectionChallenge2025/"
 df = pf.pull_features(
-    feature_dir="./test_data/features_v4",
-    label_file="./test_data/labels.parquet",
+    feature_dir=Path(home_dir+"data/cleaned/features_v4"),
+    label_file=home_dir+"output/labels.parquet",
     feature_group="all",
     # train_only=True,
     num_eegs=3
@@ -23,12 +24,13 @@ df = pf.pull_features(
 print('pull_features successful')
 
 index_col = [
-    "timestamp",
     "dataset_name",
     "subject",
     "session",
     "run",
     "unique_id",
+    "timestamp",
+    "second",
     "label",
 ]
 
