@@ -403,7 +403,7 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     Durations = [int(x) for x in Durations]
     """
     true_ann = np.array(test_rec['label'], dtype=bool)
-    pred_ann = np.array(reg_pred)
+    pred_ann = np.array(reg_pred, dtype=bool)
     pred_ann = np.array([True if x >= threshold else False for x in pred_ann], dtype=bool)
     # TODO adapt type to bool
     assert step > 0 
@@ -599,10 +599,10 @@ def calculate_metrics(pipeline,
         ovlp_f1.append(OVLP['f1'])
         ovlp_FA += OVLP['FP']
         ovlp_MA += OVLP['FN']
-        ts_f1 += pred['TS_f1']
-        ts_precision += pred['TS_precision']
-        ts_recall += pred['TS_recall']
-        ts_fpRate += pred['TS_fpRate']
+        ts_f1.append(pred['TS_f1'])
+        ts_precision.append(pred['TS_precision'])
+        ts_recall.append(pred['TS_recall'])
+        ts_fpRate.append(pred['TS_fpRate'])
 
         #latencies.extend(pred['Detection_latency'])
         #TP_SZ_overlap.extend(pred['TP_SZ_overlap'])
