@@ -42,7 +42,7 @@ wide_df = long_df.pivot(
     values="value", index=index_col, on=feature_col, maintain_order=True
 )
 
-wide_df = wide_df.with_row_index()
+# wide_df = wide_df.with_row_index()
 print("long to wide pivot succeeded.")
 
 
@@ -81,7 +81,7 @@ combin = [hyp1, hyp2, [epoch_size], [step], tau_range, thresh_range, hyp3, hyp4,
 
 all_combinations = list(itertools.product(*combin))
 
-index_col.append("index")
+# index_col.append("index")
 
 outer_k, inner_k = 3, 5
 print('Init cross validation')
