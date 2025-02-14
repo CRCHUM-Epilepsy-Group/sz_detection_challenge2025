@@ -33,7 +33,7 @@ FEATURE_GROUPS = {
 
 def pull_features(
     feature_dir: Path | str,
-    label_file: Path | str,
+    label_file: Path | str | None = None,
     feature_group: str = "all",
     test_only: bool = False,
     train_only: bool = True,

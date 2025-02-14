@@ -11,14 +11,13 @@ from szdetect import project_settings as s
 def main():
     df = pf.pull_features(
         feature_dir=s.FEATURES_DIR,
-        label_file=s.LABELS_FILE,
         feature_group="all",
         inference=True,
-        num_eegs=1000,
     )
 
     index_col = [
         "timestamp",
+        "second",
         "dataset_name",
         "subject",
         "session",
@@ -37,16 +36,16 @@ def main():
     mrmr = pickle.load(open(s.MRMR_FILE, "rb"))
 
     X_test = wide_df.drop(index_col)
-    X_test_scaled = scaler.transform(X_test)
-    X_test_fs = mrmr.transform(X_test_scaled)
-    y_pred = model.predict(X_test)
+    X_test_fs = mrmr.transform(X_test.to_pandas())
+    X_test_scaled = scaler.transform(X_test_fs)
+    y_pred = model.predict(X_test_scaled)
 
-    df = df.with_columns(pl.lit(y_pred).alias("y_pred"))
+    wide_df = wide_df.select(index_col).with_columns(pl.lit(y_pred).alias("y_pred"))
 
     # Firing power
     tau = s.TAU
     threshold = s.THRESHOLD
-    df_fp = df.with_columns(
+    df_fp = wide_df.with_columns(
         pl.col("y_pred")
         .over(["dataset_name", "subject", "session", "run"])
         .sort_by("second")
@@ -67,8 +66,8 @@ def main():
         output_file = None
 
     # Clear output directory
-    for file in OUTPUT_DIR.glob("*"):
-        file.unlink()
+    # for file in OUTPUT_DIR.glob("*"):
+    #     file.unlink()
 
     write_predictions(event_df, OUTPUT_DIR, output_file=output_file)
 
