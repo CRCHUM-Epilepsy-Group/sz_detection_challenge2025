@@ -30,7 +30,6 @@ def main():
     # ranges = [(i, min(i + mid - 1, files_count)) for i in range(0, files_count, mid)]
     # print(f"ranges {ranges}")
 
-
     params = {'max_depth': 7, 'min_child_weight': 15,
               'scale_pos_weight': 13, 
               'max_delta_step': 1,
@@ -119,11 +118,49 @@ def main():
                 print(AssertionError)
                 print("Model has to be previsouly fitted to continue training from.")
 
-
+    del X, y_true
+    del wide_df
     print(f"XGB model fitted {iteration} time(s).")
 
 
-    
+    df = pf.pull_features(
+            feature_dir=s.FEATURES_DIR,
+            label_file=s.LABELS_FILE,
+            feature_group="all",
+            train_only=False,
+            test_only=True,
+            step_size=s.PREPROCESSING_KWARGS['segment_eeg']['step_size'],
+            inference=True,
+        )
+    index_col = [
+            "dataset_name",
+            "subject",
+            "session",
+            "run",
+            "unique_id",
+            "timestamp",
+            "second"
+        ]
+    feature_col = ["region_side", "freqs", "feature"]
+
+    wide_df = df.select(index_col + feature_col + ["value"]).pivot(
+            values="value", index=index_col, on=feature_col, maintain_order=True
+        )
+    del df
+
+    model = pickle.load(open(s.MODEL_FILE, "rb"))
+    scaler = pickle.load(open(s.SCALER_FILE, "rb"))
+    mrmr = pickle.load(open(s.MRMR_FILE, "rb"))
+
+    X_test = wide_df.drop(index_col)
+    X_test_scaled = scaler.transform(X_test)
+    X_test_fs = mrmr.transform(X_test_scaled)
+    y_pred = model.predict(X_test_fs)
+
+
+    df_pred = wide_df.select(index_col).with_row_index()
+    df_pred = df_pred.with_columns(pl.Series("y_pred", y_pred))
+    df_pred.write_parquet(s.PIPE_DIR / f'y_pred_test.parquet')
 
 
 if __name__ == "__main__":
