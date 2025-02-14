@@ -35,6 +35,7 @@ def pull_features(
     feature_dir: Path | str,
     label_file: Path | str,
     feature_group: str = "all",
+    test_only: bool = False,
     train_only: bool = True,
     inference: bool = False,
     num_eegs: int | None = None,
@@ -117,7 +118,12 @@ def pull_features(
                 AND f.run = l.run 
                 AND f.timestamp = l.timestamp
             WHERE feature IN ?"""
-        join_clause = " AND l.training = TRUE" if train_only else ""
+        if train_only:
+            join_clause = " AND l.training = TRUE"
+        elif test_only:
+            join_clause = " AND l.training = FALSE"
+        else:
+            join_clause = ""
         join_where_clause = where_clause + join_clause
 
     # TODO: average over brain region if brain_region is not None
