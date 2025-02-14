@@ -40,6 +40,8 @@ def pull_features(
     inference: bool = False,
     num_eegs: int | None = None,
     step_size: int = 4,
+    start_eeg: int | None = None,
+    end_eeg: int | None = None,
 ):
     """
     Extracts and filters features from Parquet files and joins them with labels.
@@ -91,9 +93,11 @@ def pull_features(
         random.shuffle(feature_files)
         feature_files = feature_files[:num_eegs]
 
+    if start_eeg is not None and end_eeg is not None:
+        feature_files = feature_files[start_eeg:end_eeg]
+
     feature_rel = duckdb.read_parquet(feature_files)  # type: ignore
 
-    # TODO: add parameter to avoid loading features (inference = True)
     if inference:
         label_rel = None
     else:
@@ -126,7 +130,6 @@ def pull_features(
             join_clause = ""
         join_where_clause = where_clause + join_clause
 
-    # TODO: average over brain region if brain_region is not None
     query = f"""SELECT
                     f.dataset_name,
                     f.region_side,
