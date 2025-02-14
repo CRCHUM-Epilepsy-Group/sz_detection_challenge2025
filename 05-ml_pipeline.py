@@ -25,12 +25,13 @@ df = pf.pull_features(
 )
 
 index_col = [
-    "timestamp",
     "dataset_name",
     "subject",
     "session",
     "run",
     "unique_id",
+    "timestamp",
+    "second",
     "label",
 ]
 
@@ -42,7 +43,7 @@ wide_df = long_df.pivot(
     values="value", index=index_col, on=feature_col, maintain_order=True
 )
 
-wide_df = wide_df.with_row_index()
+# wide_df = wide_df.with_row_index()
 print("long to wide pivot succeeded.")
 
 
@@ -55,11 +56,11 @@ svc_gamma = ['scale', 0.001, 0.01, 0.1, 1]
 shrinking=  [True, False]
 tol =[1e-5, 1e-4, 1e-3, 1e-2]
 # XGBoost ------------------------------------
-max_depth = [3, 5, 7, 9, 11]
-min_child_weight = [1, 3, 5, 7]
-reg_alpha = [0, 0.01, 0.1, 1, 10, 100]
+max_depth = [ 5, 7, 9, 11]
+min_child_weight = [ 9, 11, 13, 15, 17]
+reg_alpha = [1, 10, 50, 100, 200]
 learning_rate = [0.01, 0.05, 0.1, 0.2]
-xgb_gamma = [0.1,  0.3, 0.5]
+xgb_gamma = [0.3, 0.5, 1, 10]
 # --------------------------------------------
 # model = SVC()
 model = xgb.XGBClassifier()
@@ -81,12 +82,13 @@ combin = [hyp1, hyp2, [epoch_size], [step], tau_range, thresh_range, hyp3, hyp4,
 
 all_combinations = list(itertools.product(*combin))
 
-index_col.append("index")
+# index_col.append("index")
 
 outer_k, inner_k = 3, 5
 print('Init cross validation')
 scores = mod.cross_validate(model = model, #TODO replace "xgb"
                             hyperparams=all_combinations,
+                            nb_rand_hp=50,
                             data=wide_df,
                             k=outer_k, inner_k=inner_k,
                             index_columns=index_col, 

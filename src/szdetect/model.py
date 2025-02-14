@@ -13,6 +13,8 @@ import random
 import datetime
 from random import shuffle
 from sklearn.base import clone
+from timescoring import scoring
+from timescoring.annotations import Annotation
 
 
 with warnings.catch_warnings():
@@ -361,6 +363,7 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     
     #fs = 256
     test_rec = test_dataset.filter(pl.col('unique_id')==record_id)
+    test_rec = test_rec.sort("second")
     record_name = test_rec.select(pl.col('unique_id')).unique().to_series().to_list()[0]
     
     X_test_rec = test_rec.drop(index_columns)
@@ -399,10 +402,25 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     Durations = Durations.replace("[", "").replace("]", "").split(', ') if not (pd.isna(Durations)) else []
     Durations = [int(x) for x in Durations]
     """
-    true_ann = np.array(test_rec['label'])
-    pred_ann = np.array(reg_pred)
-    pred_ann = np.array([1 if x >= threshold else 0 for x in pred_ann])
+    true_ann = np.array(test_rec['label'], dtype=bool)
+    pred_ann = np.array(reg_pred, dtype=bool)
+    pred_ann = np.array([True if x >= threshold else False for x in pred_ann], dtype=bool)
+    # TODO adapt type to bool
+    assert step > 0 
+    fs = 1 / step
+    ref = Annotation(true_ann, fs)
+    hyp = Annotation(pred_ann, fs)
+
+    ts_params = scoring.EventScoring.Parameters(
+        toleranceStart=30,
+        toleranceEnd=60,
+        minOverlap=0,
+        maxEventDuration=5 * 60,
+        minDurationBetweenEvents=90
+        )
+
     OVLP = ovlp(true_ann, pred_ann, step)
+    ts_scores = scoring.EventScoring(ref, hyp, ts_params)
     """
     # ########################################################################################################
     # DO NOT REMOVE COMMENTED LINES IN THIS SECTION
@@ -486,8 +504,8 @@ def predictions_per_record(test_dataset:pl.DataFrame,
     #  Sample-based metrics to estimate performance on records that contain no seizures.
     try:
         assert len(true_ann) == len(pred_ann)
-        true_ann = np.array(true_ann, dtype=int)
-        pred_ann = np.array(pred_ann, dtype=int)
+        true_ann = np.array(true_ann, dtype=bool)
+        pred_ann = np.array(pred_ann, dtype=bool)
         pres_rec, rec_rec, f1_rec, support_rec = precision_recall_fscore_support(true_ann, pred_ann,
                                                                                  zero_division=0)
         supp = len(support_rec)
@@ -504,6 +522,10 @@ def predictions_per_record(test_dataset:pl.DataFrame,
                      exc_info=True)
 
     return {'OVLP': OVLP,
+            'TS_f1': ts_scores.f1,
+            'TS_precision': ts_scores.precision,
+            'TS_recall': ts_scores.sensitivity,
+            'TS_fpRate': ts_scores.fpRate,
             #'Detection_latency': latency,
             #'TP_SZ_overlap': overlap,
             #'FAR': FAR,
@@ -547,9 +569,10 @@ def calculate_metrics(pipeline,
 
     #latencies = []
     #TP_SZ_overlap = []
-    y_hat = []
+    y_hat_reg = []
     ovlp_precision, ovlp_recall, ovlp_f1 = [], [], []
     ovlp_FA, ovlp_MA = 0, 0
+    ts_f1, ts_precision, ts_recall, ts_fpRate = [], [], [], []
     #FP_h, TP_h, FN_h = [], [], []
     #TP_duration, FN_duration = [], []
     #tiw, percentage_tiw = [], []
@@ -576,6 +599,10 @@ def calculate_metrics(pipeline,
         ovlp_f1.append(OVLP['f1'])
         ovlp_FA += OVLP['FP']
         ovlp_MA += OVLP['FN']
+        ts_f1.append(pred['TS_f1'])
+        ts_precision.append(pred['TS_precision'])
+        ts_recall.append(pred['TS_recall'])
+        ts_fpRate.append(pred['TS_fpRate'])
 
         #latencies.extend(pred['Detection_latency'])
         #TP_SZ_overlap.extend(pred['TP_SZ_overlap'])
@@ -587,15 +614,15 @@ def calculate_metrics(pipeline,
         #TP_duration.extend(pred['TP_duration'])
         #FN_duration.extend(pred['FN_duration'])
         #percentage_tiw.append(pred['percentage_tiw'])
-        y_hat.extend(pred['regularized_predictions'])
+        y_hat_reg.extend(pred['regularized_predictions'])
 
     # L = [1 if x >= threshold else 0 for x in y_hat]
     # sample-based, on all test dataset
     try:
-        assert len(y_test) == len(y_hat)
-        y_hat = np.array(y_hat, dtype=int)
-        y_test = np.array(y_test, dtype=int)
-        pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat,
+        assert len(y_test) == len(y_hat_reg)
+        y_hat_reg = np.array(y_hat_reg, dtype=bool)
+        y_test = np.array(y_test, dtype=bool)
+        pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_test, y_hat_reg,
                                                                              zero_division=0)
         s = len(support_rg)
         f1_rg = float("{:.4f}".format(f1_rg[s - 1]))
@@ -607,7 +634,6 @@ def calculate_metrics(pipeline,
             # y_pred_score = model.decision_function(scaled_X_test)
             # roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
-            y_test = np.array(y_test, dtype=int)
             roc = roc_auc_score(y_test, y_pred_score)  # sample-based
             fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
         else:
@@ -615,13 +641,19 @@ def calculate_metrics(pipeline,
             fpr, tpr, thresholds = np.array([]), np.array([]), np.array([])
 
     except (AssertionError, ValueError) as error:
-        logger.error(f'ERROR {error} len(true_ann)={len(y_test)}, len(pred_ann)={len(y_hat)}',
+        logger.error(f'ERROR {error} len(true_ann)={len(y_test)}, len(pred_ann)={len(y_hat_reg)}',
                      exc_info=True)
         f1_rg = np.nan
         pres_rg = np.nan
         rec_rg = np.nan
         roc = np.nan
         fpr, tpr, thresholds = np.array([]), np.array([]), np.array([])
+
+    y_pred = pipeline.predict(X_test.to_pandas())
+    y_pred = np.array(y_pred, dtype=bool)
+    precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred,
+                                                               pos_label=1, average='binary',
+                                                               zero_division=0)
 
     return {'f1_score_regularized': f1_rg,  # sample-based
             'precision_regularized': pres_rg,  # sample-based
@@ -632,6 +664,14 @@ def calculate_metrics(pipeline,
             'ovlp_recall': float("{:.4f}".format(np.nanmean(ovlp_recall))),  # event-based
             'ovlp_f1': float("{:.4f}".format(np.nanmean(ovlp_f1))),  # event-based
             'ovlp_FA': ovlp_FA, 'ovlp_MA': ovlp_MA,  # event-based
+            'ts_f1': float("{:.4f}".format(np.nanmean(ts_f1))),  # ts event-based
+            'ts_precision': float("{:.4f}".format(np.nanmean(ts_precision))),  # ts event-based
+            'ts_recall': float("{:.4f}".format(np.nanmean(ts_recall))),  # ts event-based
+            'ts_fpRate': float("{:.4f}".format(np.nanmean(ts_fpRate))),  # ts event-based
+            'y_pred': y_pred,
+            'epoch_precision': precision,
+            'epoch_recall': recall,
+            'epoch_f1': f1
             #'latencies': latencies,  # event-based
             #'TP_SZ_overlap': TP_SZ_overlap,  # event-based
             #'FAR': FAR,  # event-based
@@ -748,7 +788,7 @@ def fit_and_score(model, hp, data,
                                 #home_path=home_path
                                 )
     
-    score = metrics['f1_score_regularized']
+    score = metrics['epoch_f1']
     # ev_result = model.evals_result()
     # train_aucpr = ev_result['validation_0']['aucpr']
     # val_aucpr = ev_result['validation_1']['aucpr']
@@ -772,7 +812,7 @@ def fit_and_score(model, hp, data,
         threshold:{hp[5]}')
     elif in_model.__class__.__name__ == 'XGBClassifier':
         logger.info(f'max_depth :{hp[0]}, min_child_weight :{hp[1]}, win_size:{hp[2]},\
-        step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}')
+        step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]}') # TODO add the other huperparams
 
     return {**metrics, **evals_results}
 
@@ -815,16 +855,21 @@ def grid_search(model,
     #step = hyperparams[0][3]
     clf = model.__class__.__name__
 
-    all_scores = []
+    all_epoch_f1_scores = []
     FA_hp = []
     MA_hp = []
     precision_hp = []
     recall_hp = []
     f1_ovlp_hp = []
+    f1_reg_hp = []
     roc_auc_hp = []
     train_aucpr_hp = []
     val_aucpr_hp = []
-    latencies_hp = []
+    ts_f1_hp = []
+    ts_precision_hp = []
+    ts_recall_hp = []
+    ts_fpRate_hp = []
+    
     #TP_SZ_overlap_hp = []
     far_hp = []
     tiw_hp = []
@@ -836,7 +881,7 @@ def grid_search(model,
         logger.info(f"\n  Grid search: evaluate hyperparameters = \
         solver:{hp[0]}, C:{hp[1]}, win_size:{hp[2]}, step:{hp[3]}, tau:{hp[4]}, threshold:{hp[5]} ")
 
-        scores_hp = []
+        epoch_f1_scores_hp = []
         splits = get_train_test_splits(data[['subject']], inner_k)
         for split in splits:
             metrics = fit_and_score(model, hp, data,
@@ -847,8 +892,8 @@ def grid_search(model,
                                     #home_path=home_path
                                     )
 
-            score = metrics['f1_score_regularized']  # sample-based
-            scores_hp.append(score)
+            epoch_f1_score = metrics['epoch_f1']  # sample-based
+            epoch_f1_scores_hp.append(epoch_f1_score)
 
             # Event-based metrics
             FA_hp.append(metrics['ovlp_FA'])
@@ -856,9 +901,14 @@ def grid_search(model,
             precision_hp.append(metrics['ovlp_precision'])
             recall_hp.append(metrics['ovlp_recall'])
             f1_ovlp_hp.append(metrics['ovlp_f1'])
+            f1_reg_hp.append(metrics['f1_score_regularized'])
             roc_auc_hp.append(metrics['roc_auc_score'])
             train_aucpr_hp.append(metrics['train_aucpr'])
             val_aucpr_hp.append(metrics['val_aucpr'])
+            ts_f1_hp.append(metrics['ts_f1'])
+            ts_precision_hp.append(metrics['ts_precision'])
+            ts_recall_hp.append(metrics['ts_recall'])
+            ts_fpRate_hp.append(metrics['ts_fpRate'])
             #latencies_hp.append(np.nanmean(np.array(metrics['latencies'])))
             #TP_SZ_overlap_hp.append(np.nanmean(np.array(metrics['TP_SZ_overlap'])))
             #far_hp.append(np.nanmean(np.array(metrics['FAR'])))
@@ -867,7 +917,7 @@ def grid_search(model,
 
         # NOTE: scoring used for hyperparameter tuning is f1-score calculated as sample-based.
         # DO NOT use regularized f1-score to optimize hyperparameter search
-        all_scores.append(np.nanmean(scores_hp))
+        all_epoch_f1_scores.append(np.nanmean(epoch_f1_scores_hp))
 
         inner_cv_results_rows.append(
             {
@@ -882,13 +932,18 @@ def grid_search(model,
                 #'avg_latency': np.nanmean(latencies_hp),
                 'total_false_alarms': np.nanmean(FA_hp),
                 'total_missed_alarms': np.nanmean(MA_hp),
-                'f1_score_regularized': np.nanmean(scores_hp),
+                'epoch_f1_score': np.nanmean(all_epoch_f1_scores),
+                'f1_score_regularized': np.nanmean(f1_reg_hp),
                 'f1_score_ovlp': np.nanmean(f1_ovlp_hp),
                 'roc_auc': np.nanmean(roc_auc_hp),
                 'precision_ovlp': np.nanmean(precision_hp),
                 'recall_ovlp': np.nanmean(recall_hp),
                 'train_aucpr': np.nanmean(train_aucpr_hp),
-                'val_aucpr': np.nanmean(val_aucpr_hp)
+                'val_aucpr': np.nanmean(val_aucpr_hp),
+                'ts_f1_hp': np.nanmean(ts_f1_hp),
+                'ts_precision': np.nanmean(ts_precision_hp),
+                'ts_recall': np.nanmean(ts_recall_hp),
+                'ts_fpRate': np.nanmean(ts_fpRate_hp)
                 #'avg_TP_SZ_overlap': np.nanmean(TP_SZ_overlap_hp),
                 #'avg_far': np.nanmean(far_hp),
                 #'avg_tiw': np.nanmean(tiw_hp),
@@ -902,10 +957,14 @@ def grid_search(model,
     
     # refit the model on the whole data using the best selected hyperparameter,
     # and return the fitted model
-    best_hp = random_hyperparams[np.argmax(all_scores)]
+    best_hp = random_hyperparams[np.argmax(all_epoch_f1_scores)]
+    # TODO : optimize on sample-based f1-score
+    # TODO : keep track of timescoring
+    # TODO : increase grid search
+    # TODO : add sample-based f1-score on inner folds for each hyp combination to see if it correlates with the best chosen
     logger.info(f'Outer fold {outer_fold_idx} grid search finished')
     logger.info(f'\t ** Grid search: keep best hyperparameters combination = {best_hp} **')
-    logger.info(f'\t ** Highest f1-score (regularized) from the grid search is {np.max(all_scores)}')
+    logger.info(f'\t ** Highest f1-score (epoch-based) from the grid search is {np.max(all_epoch_f1_scores)}')
     best_model = clone(model)
 
     #X = data.iloc[:, 4:-1]
@@ -965,7 +1024,10 @@ def grid_search(model,
             'best_pipeline': out_pipeline}
 
 
-def cross_validate(model, hyperparams:list, data:pl.DataFrame,
+def cross_validate(model, 
+                   hyperparams:list, 
+                   nb_rand_hp:int,
+                   data:pl.DataFrame,
                    k:int, inner_k:int,
                    index_columns:list,
                    #feature_group: str = 'all',
@@ -1047,7 +1109,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
 
         gridsearch_per_fold = grid_search(model, 
                                           hyperparams = hyperparams, 
-                                          nb_rand_hp = 10,
+                                          nb_rand_hp = nb_rand_hp,
                                           data = train_val_set,
                                           inner_k = inner_k,
                                           outer_fold_idx=i,
@@ -1071,6 +1133,7 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         X_test = test_set.drop(index_columns)
         # X_test = scaler.transform(X_test)
         y_test = test_set.select('label')
+
         
         # Make predictions and calculate performance metrics
         metrics = calculate_metrics(pipeline = best_pipeline,
@@ -1108,14 +1171,17 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         y_train_pred = best_pipeline.predict(X_train.to_pandas())
         y_test_pred = best_pipeline.predict(X_test.to_pandas())
 
-        y_train = np.array(y_train, dtype=int)
-        y_train_pred = np.array(y_train_pred, dtype=int)
-        y_test = np.array(y_test, dtype=int)
-        y_test_pred = np.array(y_test_pred, dtype=int)
+        y_train = np.array(y_train, dtype=bool)
+        y_train_pred = np.array(y_train_pred, dtype=bool)
+        y_test = np.array(y_test, dtype=bool)
+        y_test_pred = np.array(y_test_pred, dtype=bool)
         pres_train, rec_train, f1_train, _ = precision_recall_fscore_support(y_train, y_train_pred,
                                                     pos_label=1, average='binary', zero_division=0)
         pres_test, rec_test, f1_test, _ = precision_recall_fscore_support(y_test, y_test_pred,
                                                     pos_label=1, average='binary', zero_division=0)
+
+        df_pred = test_set.select(index_columns).with_row_index()
+        df_pred = df_pred.with_columns(pl.Series("y_pred", y_test_pred))
 
         results_rows.append(
             {
@@ -1139,6 +1205,10 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
             'precision_ovlp': metrics['ovlp_precision'],
             'recall_ovlp': metrics['ovlp_recall'],
             'f1_score_regularized': metrics['f1_score_regularized'],
+            'ts_f1': metrics['ts_f1'],
+            'ts_precision': metrics['ts_precision'],
+            'ts_recall': metrics['ts_recall'],
+            'ts_fpRate': metrics['ts_fpRate'],
             'roc_auc_score': metrics['roc_auc_score'],
             'precision_train': pres_train,
             'precision_test': pres_test,
@@ -1172,9 +1242,12 @@ def cross_validate(model, hyperparams:list, data:pl.DataFrame,
         all_scores.append(metrics['ovlp_f1'])
         df_roc_curves = pl.concat([df_roc_curves, df_roc], how="vertical")
 
+        s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)
+        df_pred.write_parquet(s.RESULTS_DIR / f'fold_{i}_y_pred_test.parquet')
+
     df_results = pl.DataFrame(results_rows)
 
-    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True)  # TODO put back
+    s.RESULTS_DIR.parent.mkdir(exist_ok=True, parents=True) 
     df_results_pd = df_results.to_pandas()
     df_results_pd.to_csv(s.RESULTS_DIR / "cv_results.csv", index=False)
     df_roc_curves_pd = df_roc_curves.to_pandas()
