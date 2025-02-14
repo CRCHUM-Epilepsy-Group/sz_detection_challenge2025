@@ -48,9 +48,9 @@ log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
 #log_file = "temp/logs/test_ml_run.log"
 
 [model]
-pretrained_model_file = "model/xgboost.pkl"
-pretrained_scaler_file = "model/scaler.pkl"
-pretrained_mrmr_file = "model/mrmr.pkl"
+pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/xgboost.pkl"
+pretrained_scaler_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/scaler.pkl"
+pretrained_mrmr_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/mrmr.pkl"
 
 [firing_power]
 tau = 4
