@@ -57,9 +57,11 @@ RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR = Path(config["output"]["output_dir"])
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Pretrained model
-MODEL_FILE = Path(config["model"]["pretrained_model_file"])
-MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+# Pretrained pipeline and pipeline steps
+PIPE_DIR = Path(config["pipe"]["pipe_dir"])
+PIPE_DIR.mkdir(parents=True, exist_ok=True)
+PIPE_FILE = Path(config["pipe"]["pipe_file"])
+PIPE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Logs
 LOGS_FILE = Path(config["logs"]["log_file"])

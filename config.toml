@@ -47,5 +47,6 @@ max_n_eeg = 4000
 log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
 #log_file = "temp/logs/test_ml_run.log"
 
-[model]
-pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"
+[pipe]
+pipe_dir = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/"
+pipe_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"
