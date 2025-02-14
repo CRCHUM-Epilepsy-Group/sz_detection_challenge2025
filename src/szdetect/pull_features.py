@@ -94,6 +94,7 @@ def pull_features(
         feature_files = feature_files[:num_eegs]
 
     if start_eeg is not None and end_eeg is not None:
+        end_eeg = min(end_eeg, len(feature_files))
         feature_files = feature_files[start_eeg:end_eeg]
 
     feature_rel = duckdb.read_parquet(feature_files)  # type: ignore
