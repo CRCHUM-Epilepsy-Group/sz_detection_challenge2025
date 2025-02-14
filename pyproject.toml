@@ -25,3 +25,8 @@ dependencies = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/szdetect"]
+
+[dependency-groups]
+dev = [
+    "debugpy>=1.8.12",
+]
