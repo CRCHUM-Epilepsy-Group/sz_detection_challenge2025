@@ -68,11 +68,10 @@ def main():
 
         feature_col = ["region_side", "freqs", "feature"]
 
-        long_df = df.select(index_col + feature_col + ["value"])
-
-        wide_df = long_df.pivot(
+        wide_df = df.select(index_col + feature_col + ["value"]).pivot(
             values="value", index=index_col, on=feature_col, maintain_order=True
         )
+        del df
 
         X = wide_df.drop(index_col)
         y_true = wide_df.select("label")
@@ -83,13 +82,16 @@ def main():
             X = sc.fit_transform(X)
             model.fit(X, y_true)
             booster = model.get_booster()
-            sel_name = s.PIPE_DIR / f"iter_{iteration}_mrmr.pkl"
-            sc_name = s.PIPE_DIR / f"iter_{iteration}_scaler.pkl"
-            mod_name = s.PIPE_DIR / f"iter_{iteration}_xgboost.pkl"
+            sel_name = s.PIPE_DIR / f"mrmr.pkl"
+            sc_name = s.PIPE_DIR / f"scaler.pkl"
+            mod_name = s.PIPE_DIR / f"xgboost.pkl"
 
-            pickle.dump(sel, open(sel_name, 'wb'))
-            pickle.dump(sc, open(sc_name, 'wb'))
-            pickle.dump(model, open(mod_name, 'wb'))
+            with open(sel_name, 'wb') as f:
+                pickle.dump(sel, f)
+            with open(sc_name, 'wb') as f:
+                pickle.dump(sc, f)
+            with open(mod_name, 'wb') as f:
+                pickle.dump(model, f)
             iteration += 1
         else:
             # incremental learning
@@ -100,7 +102,8 @@ def main():
                 if mod_name.exists():
                     print(f"Model {iteration} already stored")
                 else:
-                    pickle.dump(model, open(mod_name, 'wb'))
+                    with open(mod_name, 'wb') as f:
+                        pickle.dump(model, f)
                 iteration += 1
             except AssertionError:
                 print(AssertionError)
