@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11 AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.5.29 /uv /uvx /bin/
 
 # Install cmake for epileptology further down
@@ -29,11 +29,19 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 # Install the szdetect package
-RUN uv pip install -e .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install .
 
 # Install epileptology package
 RUN --mount=type=bind,source=epileptology,target=/pkg/epileptology \
     uv pip install /pkg/epileptology
+
+FROM python:3.11
+WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:0.5.29 /uv /uvx /bin/
+COPY --from=builder /app/.venv/ /app/.venv/
+ADD . /app
+RUN rm -rf epileptology
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
