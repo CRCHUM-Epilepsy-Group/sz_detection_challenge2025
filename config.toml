@@ -48,4 +48,10 @@ log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
 #log_file = "temp/logs/test_ml_run.log"
 
 [model]
-pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"
+pretrained_model_file = "model/xgboost.pkl"
+pretrained_scaler_file = "model/scaler.pkl"
+pretrained_mrmr_file = "model/mrmr.pkl"
+
+[firing_power]
+tau = 4
+threshold = 0.5
