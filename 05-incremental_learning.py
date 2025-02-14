@@ -39,7 +39,7 @@ def main():
             'learning_rate': 0.5, 'gamma': 0.3, 'booster': 'gbtree'}
 
     sel = MRMR(method="FCQ", regression=False)
-    sc = StandardScaler()
+    # sc = StandardScaler()
     model = xgb.XGBClassifier()
     model.set_params(**params)
         
@@ -76,6 +76,19 @@ def main():
         )
         del df
 
+        print("Training data stats:")
+        datasets = wide_df.select("dataset_name").unique().to_series().to_list()
+        for dataset in datasets:
+            df_dt = wide_df.filter(pl.col("dataset_name")==dataset)
+            nb_eegs = df_dt.select("unique_id").unique().to_series().to_list()
+            subjects = df_dt.select("subject").unique().to_series().to_list()
+            sz_eegs = df_dt.filter(pl.col("label")==True).select("unique_id").unique().to_series().to_list()
+
+            print(f"Stats for {dataset}")
+            print(f"\tNb EEG files {len(nb_eegs)}")
+            print(f"\tNb subjects {len(subjects)}")
+            print(f"\tNb EEG files with seizures {len(sz_eegs)}")
+
         n_neg = len(wide_df.filter(pl.col("label")==False))
         n_pos = len(wide_df.filter(pl.col("label")==True))
 
@@ -97,14 +110,14 @@ def main():
             tt1 = datetime.datetime.now()
             # fit selector and scaler only once
             X = sel.fit_transform(X, y_true)
-            X = sc.fit_transform(X)
+            # X = sc.fit_transform(X)
             model.fit(X, y_true)
             booster = model.get_booster()
 
             with open(s.MRMR_FILE, 'wb') as f:
                 pickle.dump(sel, f)
-            with open(s.SCALER_FILE, 'wb') as f:
-                pickle.dump(sc, f)
+            # with open(s.SCALER_FILE, 'wb') as f:
+            #     pickle.dump(sc, f)
             with open(s.MODEL_FILE, 'wb') as f:
                 pickle.dump(model, f)
             iteration += 1
@@ -157,21 +170,35 @@ def main():
         )
     del df
 
+    print("Testing data stats:")
+    datasets = wide_df.select("dataset_name").unique().to_series().to_list()
+    for dataset in datasets:
+        df_dt = wide_df.filter(pl.col("dataset_name")==dataset)
+        nb_eegs = df_dt.select("unique_id").unique().to_series().to_list()
+        subjects = df_dt.select("subject").unique().to_series().to_list()
+        sz_eegs = df_dt.filter(pl.col("label")==True).select("unique_id").unique().to_series().to_list()
+
+        print(f"Stats for {dataset}")
+        print(f"\tNb EEG files {len(nb_eegs)}")
+        print(f"\tNb subjects {len(subjects)}")
+        print(f"\tNb EEG files with seizures {len(sz_eegs)}")
+
     model = pickle.load(open(s.MODEL_FILE, "rb"))
-    scaler = pickle.load(open(s.SCALER_FILE, "rb"))
+    # scaler = pickle.load(open(s.SCALER_FILE, "rb"))
     mrmr = pickle.load(open(s.MRMR_FILE, "rb"))
 
     X_test = wide_df.drop(index_col)
     X_test = X_test.to_pandas()
-    X_test_fs = mrmr.transform(X_test)
-    X_test_scaled = scaler.transform(X_test_fs)
-    y_pred = model.predict(X_test_scaled)
+    X_test = mrmr.transform(X_test)
+    # X_test_scaled = scaler.transform(X_test_fs)
+    y_pred = model.predict(X_test)
 
 
     df_pred = wide_df.select(index_col).with_row_index()
     y_pred = np.array(y_pred, dtype=bool)
     df_pred = df_pred.with_columns(pl.Series("y_pred", y_pred))
     df_pred.write_parquet(s.PIPE_DIR / f'y_pred_test.parquet')
+    print("y_pred saved.")
 
 
 if __name__ == "__main__":
