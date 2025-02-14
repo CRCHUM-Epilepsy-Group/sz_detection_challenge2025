@@ -52,5 +52,5 @@ pretrained_scaler_file = "model/scaler.pkl"
 pretrained_mrmr_file = "model/mrmr.pkl"
 
 [firing_power]
-tau = 4
-threshold = 0.5
+tau = 3
+threshold = 0.2
