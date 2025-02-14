@@ -25,7 +25,6 @@ BIDS_DB_FILES_DIR = Path(config["utilities"]["bids_db_files_dir"])
 LABELS_FILE = config["labels"]["labels_file"]
 
 # Feature extraction
-FEATURES_DB = config["features"]["features_db_file"]
 FEATURES, FRAMEWORKS = parse_featureextraction_config(
     config["features"]["features_config"]
 )
@@ -59,8 +58,8 @@ SCALER_FILE = Path(config["model"]["pretrained_scaler_file"])
 MRMR_FILE = Path(config["model"]["pretrained_mrmr_file"])
 
 # Firing power
-TAU = config["model"]["tau"]
-THRESHOLD = config["model"]["threshold"]
+TAU = config["firing_power"]["tau"]
+THRESHOLD = config["firing_power"]["threshold"]
 # Pretrained pipeline and pipeline steps
 PIPE_DIR = Path(config["pipe"]["pipe_dir"])
 PIPE_DIR.mkdir(parents=True, exist_ok=True)
