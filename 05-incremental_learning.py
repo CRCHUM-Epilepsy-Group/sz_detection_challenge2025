@@ -13,12 +13,21 @@ from szdetect import project_settings as s
 
 
 def main():
+    max_per_range = 2500
     files_count = len(glob.glob(str(s.FEATURES_DIR)+"/*.parquet"))
     print(f"files_count {files_count}")
 
-    mid = files_count // 2 
-    ranges = [(i, min(i + mid - 1, files_count)) for i in range(0, files_count, mid)]
-    print(f"ranges {ranges}")
+    ranges = []
+    start = 1
+
+    while start <= files_count:
+        end = min(start + max_per_range - 1, files_count)  # Ensure we don't exceed total_files
+        ranges.append((start, end))
+        start = end + 1  # Move to the next range
+
+    # mid = files_count // 2 
+    # ranges = [(i, min(i + mid - 1, files_count)) for i in range(0, files_count, mid)]
+    # print(f"ranges {ranges}")
 
 
     params = {'max_depth': 7, 'min_child_weight': 15,
