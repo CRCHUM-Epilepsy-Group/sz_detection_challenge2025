@@ -11,10 +11,8 @@ from szdetect import project_settings as s
 def main():
     df = pf.pull_features(
         feature_dir=s.FEATURES_DIR,
-        label_file=s.LABELS_FILE,
         feature_group="all",
         inference=True,
-        num_eegs=1000,
     )
 
     index_col = [
@@ -39,7 +37,7 @@ def main():
     X_test = wide_df.drop(index_col)
     X_test_scaled = scaler.transform(X_test)
     X_test_fs = mrmr.transform(X_test_scaled)
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test_fs)
 
     df = df.with_columns(pl.lit(y_pred).alias("y_pred"))
 
