@@ -19,5 +19,6 @@ def write_predictions(df, output_dir, output_file=None):
             with open(output_file, "w") as f:
                 f.write("onset\tduration\teventType\tdatetime\n")
         # If file exists, append the new event
-        with open(output_file, "a") as f:
-            f.write(f"{onset}\t{duration}\t{eventType}\t{dateTime}\n")
+        if row["onset"] is not None and row["duration"] is not None:
+            with open(output_file, "a") as f:
+                f.write(f"{onset}\t{duration}\t{eventType}\t{dateTime}\n")

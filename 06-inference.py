@@ -1,4 +1,5 @@
 import pickle
+from szdetect.predictions_to_df import firing_power_pl, get_events_df
 import os
 import polars as pl
 from pathlib import Path
@@ -13,7 +14,7 @@ def main():
         label_file=s.LABELS_FILE,
         feature_group="all",
         inference=True,
-        num_eegs=1000
+        num_eegs=1000,
     )
 
     index_col = [
@@ -31,35 +32,31 @@ def main():
     )
     print("long to wide pivot succeeded.")
 
-    # TODO add filepath to config and project_settings and load (s.MODEL_FILE)
-    # model_file = s.MODEL_FILE
-    # pretrained_model = pickle.load(open(model_file, "rb"))
+    model = pickle.load(open(s.MODEL_FILE, "rb"))
+    scaler = pickle.load(open(s.SCALER_FILE, "rb"))
+    mrmr = pickle.load(open(s.MRMR_FILE, "rb"))
 
-    # X_test = wide_df.drop(index_col)
-    # # X_test = scaler.transform(X_test_rec) # TODO add scaling on training data
-    # y_pred = pretrained_model.predict(X_test)
+    X_test = wide_df.drop(index_col)
+    X_test_scaled = scaler.transform(X_test)
+    X_test_fs = mrmr.transform(X_test_scaled)
+    y_pred = model.predict(X_test)
+
+    df = df.with_columns(pl.lit(y_pred).alias("y_pred"))
 
     # Firing power
+    tau = s.TAU
+    threshold = s.THRESHOLD
+    df_fp = df.with_columns(
+        pl.col("y_pred")
+        .over(["dataset_name", "subject", "session", "run"])
+        .sort_by("second")
+        .map_batches(lambda x: firing_power_pl(x, tau, threshold))
+        .alias("fp_pred")
+    )
+    event_df = get_events_df(df_fp, s.PREPROCESSING_KWARGS["segment_eeg"]["step_size"])
 
     # Event predictions to TSV file with colomns onset, duration, evetType (sz) and dateTime
     # in POSIX foramt %Y-%m-%d %H:%M:%S
-    mock_predictions = pl.DataFrame(
-        {
-            "dataset_name": ["mock_1", "mock_1", "mock_1", "mock_2"],
-            "subject": ["01", "01", "01", "01"],
-            "session": ["01", "01", "02", "01"],
-            "run": ["01", "02", "01", "01"],
-            "onset": [0, 10, 20, 10],
-            "duration": [10, 20, 20, 10],
-            "eventType": ["sz", "sz", "sz", "sz"],
-            "dateTime": [
-                "2021-01-01 00:00:00",
-                "2021-01-01 00:10:00",
-                "2021-01-01 00:20:00",
-                "2021-01-02 00:20:00",
-            ],
-        }
-    )
 
     if s.IN_DOCKER:
         output_file = Path(f"/output/{os.environ.get('OUTPUT')}")  # type: ignore
@@ -73,7 +70,7 @@ def main():
     for file in OUTPUT_DIR.glob("*"):
         file.unlink()
 
-    write_predictions(mock_predictions, OUTPUT_DIR, output_file=output_file)
+    write_predictions(event_df, OUTPUT_DIR, output_file=output_file)
 
 
 if __name__ == "__main__":

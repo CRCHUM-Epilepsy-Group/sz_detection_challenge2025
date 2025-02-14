@@ -2,7 +2,8 @@
 import os
 from pathlib import Path
 
-import duckdb
+import sys
+
 import epileptology.preprocessing as pp
 import tomllib
 from epileptology.features.featureextraction import FeatureExtractor
@@ -19,11 +20,9 @@ BIDS_DATASETS = {k: Path(v) for k, v in config["datasets"].items()}
 
 # Bids DB file
 BIDS_DB_FILES_DIR = Path(config["utilities"]["bids_db_files_dir"])
-BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Labels
 LABELS_FILE = config["labels"]["labels_file"]
-Path(LABELS_FILE).parent.mkdir(parents=True, exist_ok=True)
 
 # Feature extraction
 FEATURES_DB = config["features"]["features_db_file"]
@@ -31,7 +30,6 @@ FEATURES, FRAMEWORKS = parse_featureextraction_config(
     config["features"]["features_config"]
 )
 FEATURES_DIR = Path(config["features"]["features_dir"])
-FEATURES_DIR.mkdir(parents=True, exist_ok=True)
 NUM_WORKERS = config["features"]["num_workers"]
 OVERWRITE_FEATURES = config["features"]["overwrite"]
 FEATURE_LOG_DIR = config["features"]["log_dir"]
@@ -51,12 +49,18 @@ IN_DOCKER = os.environ.get("IN_DOCKER") == "1"
 
 # Results
 RESULTS_DIR = Path(config["results"]["results_dir"])
-RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
 
 # Output of inference
 OUTPUT_DIR = Path(config["output"]["output_dir"])
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# Pretrained model
+MODEL_FILE = Path(config["model"]["pretrained_model_file"])
+SCALER_FILE = Path(config["model"]["pretrained_scaler_file"])
+MRMR_FILE = Path(config["model"]["pretrained_mrmr_file"])
+
+# Firing power
+TAU = config["model"]["tau"]
+THRESHOLD = config["model"]["threshold"]
 # Pretrained pipeline and pipeline steps
 PIPE_DIR = Path(config["pipe"]["pipe_dir"])
 PIPE_DIR.mkdir(parents=True, exist_ok=True)
@@ -65,7 +69,16 @@ PIPE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Logs
 LOGS_FILE = Path(config["logs"]["log_file"])
-LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+if "pytest" not in sys.modules:
+    BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    Path(LABELS_FILE).parent.mkdir(parents=True, exist_ok=True)
+    FEATURES_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
 
 FEATURE_GROUPS = {
     "efficiency": [
