@@ -1,6 +1,8 @@
 import glob
 import pickle
 import warnings
+import datetime
+import numpy as np
 import polars as pl
 
 with warnings.catch_warnings():
@@ -30,11 +32,11 @@ def main():
     # ranges = [(i, min(i + mid - 1, files_count)) for i in range(0, files_count, mid)]
     # print(f"ranges {ranges}")
 
-    params = {'max_depth': 7, 'min_child_weight': 15,
-              'scale_pos_weight': 13, 
-              'max_delta_step': 1,
-              'eval_metric':'aucpr', 'reg_alpha': 100,
-              'learning_rate': 0.05, 'gamma': 0.3, 'booster': 'gbtree'}
+    params = {'max_depth': 9, 'min_child_weight': 15,
+            'scale_pos_weight': 13, 
+            'max_delta_step': 1,
+            'eval_metric':'aucpr', 'reg_alpha': 50,
+            'learning_rate': 0.5, 'gamma': 0.3, 'booster': 'gbtree'}
 
     sel = MRMR(method="FCQ", regression=False)
     sc = StandardScaler()
@@ -86,9 +88,13 @@ def main():
         params["scale_pos_weight"]= scale_pos_weight
 
         X = wide_df.drop(index_col)
+        X = X.to_pandas()
         y_true = wide_df.select("label")
+        y_true = y_true.to_pandas().values.ravel()
         
         if iteration < 1:
+            print("Training...")
+            tt1 = datetime.datetime.now()
             # fit selector and scaler only once
             X = sel.fit_transform(X, y_true)
             X = sc.fit_transform(X)
@@ -102,6 +108,8 @@ def main():
             with open(s.MODEL_FILE, 'wb') as f:
                 pickle.dump(model, f)
             iteration += 1
+            tt2 = datetime.datetime.now()
+            print(f'\n\t\tTraining time for one model in outer fold is {tt2-tt1}')
         else:
             # incremental learning
             try: 
@@ -118,19 +126,19 @@ def main():
                 print(AssertionError)
                 print("Model has to be previsouly fitted to continue training from.")
 
-    del X, y_true
-    del wide_df
+        del X, y_true
+        del wide_df
     print(f"XGB model fitted {iteration} time(s).")
 
 
+    print("Pulling test only data ... ")
     df = pf.pull_features(
             feature_dir=s.FEATURES_DIR,
             label_file=s.LABELS_FILE,
             feature_group="all",
             train_only=False,
             test_only=True,
-            step_size=s.PREPROCESSING_KWARGS['segment_eeg']['step_size'],
-            inference=True,
+            step_size=s.PREPROCESSING_KWARGS['segment_eeg']['step_size']
         )
     index_col = [
             "dataset_name",
@@ -139,7 +147,8 @@ def main():
             "run",
             "unique_id",
             "timestamp",
-            "second"
+            "second",
+            "label"
         ]
     feature_col = ["region_side", "freqs", "feature"]
 
@@ -153,12 +162,14 @@ def main():
     mrmr = pickle.load(open(s.MRMR_FILE, "rb"))
 
     X_test = wide_df.drop(index_col)
-    X_test_scaled = scaler.transform(X_test)
-    X_test_fs = mrmr.transform(X_test_scaled)
-    y_pred = model.predict(X_test_fs)
+    X_test = X_test.to_pandas()
+    X_test_fs = mrmr.transform(X_test)
+    X_test_scaled = scaler.transform(X_test_fs)
+    y_pred = model.predict(X_test_scaled)
 
 
     df_pred = wide_df.select(index_col).with_row_index()
+    y_pred = np.array(y_pred, dtype=bool)
     df_pred = df_pred.with_columns(pl.Series("y_pred", y_pred))
     df_pred.write_parquet(s.PIPE_DIR / f'y_pred_test.parquet')
 
