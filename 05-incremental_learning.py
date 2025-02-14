@@ -1,6 +1,7 @@
 import glob
 import pickle
 import warnings
+import polars as pl
 
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -31,9 +32,10 @@ def main():
 
 
     params = {'max_depth': 7, 'min_child_weight': 15,
-            'scale_pos_weight': 13, 'max_delta_step': 1,
-            'eval_metric':'aucpr', 'reg_alpha': 100,
-            'learning_rate': 0.05, 'gamma': 0.3, 'booster': 'gbtree'}
+              'scale_pos_weight': 13, 
+              'max_delta_step': 1,
+              'eval_metric':'aucpr', 'reg_alpha': 100,
+              'learning_rate': 0.05, 'gamma': 0.3, 'booster': 'gbtree'}
 
     sel = MRMR(method="FCQ", regression=False)
     sc = StandardScaler()
@@ -73,6 +75,17 @@ def main():
         )
         del df
 
+        n_neg = len(wide_df.filter(pl.col("label")==False))
+        n_pos = len(wide_df.filter(pl.col("label")==True))
+
+        try:
+            scale_pos_weight = int(n_neg / n_pos)
+        except ZeroDivisionError:
+            scale_pos_weight = 1
+
+        # Update weight balancing
+        params["scale_pos_weight"]= scale_pos_weight
+
         X = wide_df.drop(index_col)
         y_true = wide_df.select("label")
         
@@ -82,15 +95,12 @@ def main():
             X = sc.fit_transform(X)
             model.fit(X, y_true)
             booster = model.get_booster()
-            sel_name = s.PIPE_DIR / f"mrmr.pkl"
-            sc_name = s.PIPE_DIR / f"scaler.pkl"
-            mod_name = s.PIPE_DIR / f"xgboost.pkl"
 
-            with open(sel_name, 'wb') as f:
+            with open(s.MRMR_FILE, 'wb') as f:
                 pickle.dump(sel, f)
-            with open(sc_name, 'wb') as f:
+            with open(s.SCALER_FILE, 'wb') as f:
                 pickle.dump(sc, f)
-            with open(mod_name, 'wb') as f:
+            with open(s.MODEL_FILE, 'wb') as f:
                 pickle.dump(model, f)
             iteration += 1
         else:
@@ -111,6 +121,9 @@ def main():
 
 
     print(f"XGB model fitted {iteration} time(s).")
+
+
+    
 
 
 if __name__ == "__main__":
