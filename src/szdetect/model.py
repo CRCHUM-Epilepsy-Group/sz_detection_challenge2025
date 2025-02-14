@@ -44,8 +44,8 @@ from skopt import space
 #from eegml import featureengineering as fe
 from szdetect import project_settings as s
 
-s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
-logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
+# s.LOGS_FILE.parent.mkdir(exist_ok=True, parents=True)
+# logging.basicConfig(filename=s.LOGS_FILE, level=logging.INFO, format='%(message)s')
 # logging.basicConfig(filename='test_ml_run.log', level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
