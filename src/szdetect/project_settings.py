@@ -58,6 +58,11 @@ MRMR_FILE = Path(config["model"]["pretrained_mrmr_file"])
 # Firing power
 TAU = config["firing_power"]["tau"]
 THRESHOLD = config["firing_power"]["threshold"]
+# Pretrained pipeline and pipeline steps
+PIPE_DIR = Path(config["pipe"]["pipe_dir"])
+PIPE_DIR.mkdir(parents=True, exist_ok=True)
+PIPE_FILE = Path(config["pipe"]["pipe_file"])
+PIPE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Logs
 LOGS_FILE = Path(config["logs"]["log_file"])

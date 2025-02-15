@@ -52,6 +52,7 @@ n_pos = sum(y_train == 1)
 n_neg = sum(y_train == 0)
 scale_pos_weight = n_neg / n_pos
 
+sel = MRMR(method="FCQ", regression=False)
 sc = StandardScaler()
 in_model = clone(model)
 hp = random_hyperparams[0]
@@ -61,13 +62,13 @@ elif in_model.__class__.__name__ == 'XGBClassifier':
     params = {'max_depth': hp[0], 'min_child_weight': hp[1],
                   'scale_pos_weight': scale_pos_weight, 'max_delta_step': 1,
                   'eval_metric':'aucpr', 'reg_alpha': hp[6],
-                  #'early_stopping_rounds': 200,
+                #   'early_stopping_rounds': 200,
                   'learning_rate': hp[7], 'gamma': hp[8], 'booster': 'gbtree'}
     
 in_model.set_params(**params)
 
 
-sel = MRMR(method="FCQ", regression=False)
+
 
 pipeline = Pipeline([
     ('feature_selector', sel),
@@ -75,17 +76,43 @@ pipeline = Pipeline([
     ('classifier', in_model)
 ])
 
-# Train the pipeline on the training data
-pipeline.fit(X_train, y_train)
+X_train = sel.fit_transform(X_train, y_train)
+X_train = sc.fit_transform(X_train)
 
+X_test = sel.transform(X_test)
+X_test = sc.transform(X_test)
+# Train the pipeline on the training data
+# X_val_transformed = pipeline[:-1].transform(X_test)
+# pipeline.fit(X_train, y_train, classifier__eval_set=[(X_val_transformed, y_test)])
+in_model.fit(X_train, y_train)
 print('Pipeline trained')
 
-y_train_pred = pipeline.predict(X_train)
-y_test_pred = pipeline.predict(X_test)
 
-pres_train, rec_train, f1_train, _ = prf_scores(y_train, y_train_pred, 
+
+y_train_pred_v1 = in_model.predict(X_train)
+y_test_pred_v1 = in_model.predict(X_test)
+
+pres_train, rec_train, f1_train, _ = prf_scores(y_train, y_train_pred_v1, 
                                             pos_label=1, average='binary', zero_division=0)
-pres_test, rec_test, f1_test, _ = prf_scores(y_test, y_test_pred,
+pres_test, rec_test, f1_test, _ = prf_scores(y_test, y_test_pred_v1,
+                                            pos_label=1, average='binary',zero_division=0)
+
+print('Scores     \t- Train \t--- Test')
+print(f'precision \t- {pres_train:.4f} \t--- {pres_test:.4f}')
+print(f'recall    \t- {rec_train:.4f} \t--- {rec_test:.4f}')
+print(f'f1-score  \t- {f1_train:.4f} \t--- {f1_test:.4f}')
+
+boost = in_model.get_booster()
+in_model.fit(X_train, y_train, xgb_model=boost)
+
+print('classifier re-trained')
+
+y_train_pred_v2 = in_model.predict(X_train)
+y_test_pred_v2 = in_model.predict(X_test)
+
+pres_train, rec_train, f1_train, _ = prf_scores(y_train, y_train_pred_v2, 
+                                            pos_label=1, average='binary', zero_division=0)
+pres_test, rec_test, f1_test, _ = prf_scores(y_test, y_test_pred_v2,
                                             pos_label=1, average='binary',zero_division=0)
 
 print('Scores     \t- Train \t--- Test')

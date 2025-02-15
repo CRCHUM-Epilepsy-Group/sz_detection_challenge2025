@@ -21,7 +21,7 @@ df = pf.pull_features(
     label_file=s.LABELS_FILE,
     feature_group="all",
     train_only=True,
-    num_eegs=1000
+    num_eegs=2500
 )
 
 index_col = [
