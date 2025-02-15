@@ -1,104 +1,19 @@
-# Seizure Detection Challenge: AI in Epilepsy 2025
+# An Efficient Pipeline for Seizure Detection on Scalp EEG Combining Multi-scale Features and Gradient Boosting
 
-[Instructions for the challenge](https://epilepsybenchmarks.com/challenge/)
+Submission for the 2025 AI in Epilepsy Conference [Seizure Detection Challenge]((https://epilepsybenchmarks.com/challenge/)) from CRCHUM's Epilepsy Research Team, Montreal, Canada
 
-# Workflow
+## Authors (alphabetic order)
 
-1. Installation
-* I recommend using uv (<https://docs.astral.sh/uv/getting-started/installation/>)
+Elie Bou Assi, Daniel Galindo, Oumayma Gharbi, François Hardy, Amirhossein Jahani, Émile Lemoine, Isabel Sarzo Wabi
 
-``` sh
-wget -qO- https://astral.sh/uv/install.sh | sh
-uv sync --frozen
-```
-* Install Git LFS (for test_data)
-* Install epileptology
+## Abstract
 
-``` sh
-# cd to a dedicated local directory, e.g.:
-cd ../epileptology
-git clone https://github.com/CRCHUM-Epilepsy-Group/epileptology/tree/main .
-uv build
-# cd back to your local project directory, e.g.:
-cd ../sz_detection_challenge2025
-# Install all packages except epileptology
-uv sync --frozen
-# Install the epileptology package using pip's interface in uv
-uv pip install /path/to/epileptology
- # In my case: /Users/emilelemoine/software/epileptology
-```
+**Rationale and Algorithm**: Seizure detection on scalp EEG faces challenges due to poor signal-to-noise ratio and heterogeneity in seizure patterns and localizations. We developed a feature extraction algorithm that captures seizure-related changes across various timescales and frequencies. Our approach combines linear, non-linear, and connectivity features, and uses these as input into a Gradient Boosted Trees model regularized by a  post-processing algorithm.
 
+**Data Processing**: EEGs were segmented into overlapping 10s windows (4s overlap) using all 19 standard channels in average referential montage. We applied the Continuous Wavelet Transform with Morlet wavelets to decompose the signal into 8 frequency bands (from 3 Hz to 50 Hz, one 3–40 Hz band). After frequency-dependent downsampling, we extracted linear (band power), non-linear (fuzzy entropy and line length), and connectivity features (including betweenness, efficiency, eigenvector centrality, node strength) from the filtered signals. The scaled features were then processed through a machine learning pipeline combining minimum Redundancy-Maximum Relevance feature selection and XGBoost classification. The epoch-based predictions were regularized using the Firing Power algorithm, which consists in applying a moving average across $\tau$ segments and binarize the results with a fixed threshold $T$.
 
-2. Packages
-* polars for DataFrames
-* DuckDB for storage of features
-* MNE-Python for EDF handling and EEG preprocessing
-* PyBIDS for managing BIDS databases
-* Zarr Arrays to store arrays on-disk
-* See uv.lock or project.toml for requirements
+**Training and Validation**: The model was trained on a subset of the Temple University Hospital and the Siena Hospital Seizure Detection datasets. We conducted an initial feature exploration step through visual exploration of 1,507 EEGs to narrow down the set of features and frequency bands. Hyperparameter selection was done with a random search over a nested cross-validation (100 iterations, 5-fold inner loop, 3-fold outer loop). The criterion for the cross-validation was the epoch-wise F1-score. The outer-loop predictions were used to select the optimal Firing Power’s  and T values.
 
-3. Git worklow
-* Start a branch to work on your feature
-* When the code is ready: push the branch and go on GitHub to open a pull request
+**Performance**: We tested the best model on a held-out set of 453 EEGs from the same datasets, without overlap between subjects. With a  of 12 and T of 0.4, the model achieved an average event-based F1 score of 0.72 (precision = 0.34, sensitivity 0.30). For the final submission, we further optimized  and T on this held-out set.
 
-# Resources
-
-[Review of winning features from previous competitions](https://github.com/Eldave93/Seizure-Detection-Tutorials/blob/master/02.%20Pre-Processing%20%26%20Feature%20Engineering.ipynb)
-
-# Plan
-
-## Initialize repo
-
-```
-- src \
-  - chum_detection \ # Functions that will be imported by scripts
-    - ... detection
-    - ... feature extraction
-    - features/
-      - connectivity.py
-      - ...
-- 01-pull_data.py # Scripts in sequence
-- 02-extract_features.py
-...
-- 05-classification.py
-- ...
-- main.py # The final script to be called when running the container
-- tests \
-  - test_data \
-    - eeg_array.npy : (25 segments, 19 channels, 2000 timepoints)
-    - conn_matrix.npy
-    - features.db
-  - test_connectivity.py
-- explore \ # Files for exploration (notebooks, scripts, ...)
-  - eigenvalue_corr.py
-  - new_connectivty_features.py
-```
-
-## Data handling: BIDS / Zarr Arrays
-OG and FH
-
-* Goal: BIDS datasets stored locally
-* Keep some testing data in reserve for final calibration steps
-
-## Feature extraction
-OG, IS, DG, and EL
-
-* Testing data : EL
-  * Get a toy DF with features
-    * DuckDB for storage
-    * Feature name, Electrode, Region, Wavelet level/freq band, EEG session, patient ID, timestamp, segment duration, value of feature, preprocessing vs. not preprocessed
-  * Correlation matrix
-  * EEG arrays
-* Implement correlation conn and recurrence pre-transforms : EL
-* Implement new features
-  * [X] Entropy
-  * [ ] Connectivity : IS and OG
-    * [ ] Eigenvalue of correlation matrix
-    * [ ] Covariance matrix
-    * [ ] Recurrence plot
-  * [X] PSD
-  * [ ] New features : OG, IS, DG
-* Start working on featureextraction pipeline: EL
-
-## Seizure detection
-* Start working on seizure detection pipeline: OG
+**Complexity**: Our optimized implementation employs frequency-domain convolutions and channel-wise parallelization, achieving logarithmic-linear complexity with signal length. Processing time averages 5 minutes per hour of EEG using 10 CPU cores and 50 GB RAM.
