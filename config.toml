@@ -16,11 +16,10 @@ labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 
 [features]
 features_config = "features_config.yaml"
-features_dir = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features_v4/"
-features_db_file = "/mnt/data/SeizureDetectionChallenge2025/data/cleaned/features.db"
+features_dir = "data/cleaned/inference/"
 num_workers = 10
 overwrite = false
-log_dir = "logs/features_v4"
+log_dir = "logs/inference"
 
 [preprocessing]
 # -1 will be converted to None
@@ -48,4 +47,14 @@ log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
 #log_file = "temp/logs/test_ml_run.log"
 
 [model]
-pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"
+pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/xgboost.pkl"
+pretrained_scaler_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/scaler.pkl"
+pretrained_mrmr_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/mrmr.pkl"
+
+[firing_power]
+tau = 12
+threshold = 0.4
+
+[pipe]
+pipe_dir = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/"
+pipe_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"

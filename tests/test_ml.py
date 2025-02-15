@@ -22,8 +22,8 @@ from sklearn.metrics import precision_recall_fscore_support
 
 
 df = pf.pull_features(
-    feature_dir=Path("./tests/test_data/features_v4"),
-    label_file="./tests/test_data/labels.parquet",
+    feature_dir=Path('./test_data/features_v4'),
+    label_file="./test_data/labels.parquet",
     feature_group="all",
     #train_only=True,
 )
@@ -107,6 +107,7 @@ train_val_set = data.filter(pl.col('subject').is_in(outer_splits[out_split]['tra
 test_set = data.filter(pl.col('subject').is_in(outer_splits[out_split]['test']))
 
 X_test = test_set.drop(index_columns)
+y_test = test_set.select('label')
 
 
 inner_splits = mod.get_train_test_splits(train_val_set[['subject']], inner_k)
@@ -170,6 +171,7 @@ print('Training ... ')
 
 
 y_hat = []
+y_val_temp = []
 ovlp_precision, ovlp_recall, ovlp_f1 = [], [], []
 ovlp_FA, ovlp_MA = 0, 0
 
@@ -198,25 +200,29 @@ pred_ann = np.array(reg_pred)
 pred_ann = np.array([1 if x >= hp[5] else 0 for x in pred_ann])
 OVLP = mod.ovlp(true_ann, pred_ann, step=hp[3])
 
+pred_ann = np.array(pred_ann, dtype=bool)
 pres_rec, rec_rec, f1_rec, _ = precision_recall_fscore_support(true_ann, pred_ann, 
                                                                pos_label=1, average='binary',
                                                                zero_division=0)
 
 y_hat.extend(pred_ann)
+y_val_temp.extend(true_ann)
 
-pres_rg, rec_rg, f1_rg, support_rg = precision_recall_fscore_support(y_val, y_hat,
+y_hat = np.array(y_hat, dtype=bool)
+pres_rg, rec_rg, f1_rg, _ = precision_recall_fscore_support(y_val_temp, y_hat,
                                                                      pos_label=1, average='binary',
                                                                      zero_division=0)
-s = len(support_rg)
-f1_rg = float("{:.4f}".format(f1_rg[s - 1]))
-pres_rg = float("{:.4f}".format(pres_rg[s-1]))
-rec_rg = float("{:.4f}".format(rec_rg[s-1]))
+# s = len(support_rg)
+f1_rg = float("{:.4f}".format(f1_rg))
+pres_rg = float("{:.4f}".format(pres_rg))
+rec_rg = float("{:.4f}".format(rec_rg))
 
 model = pipeline[-1]
 if model.__class__.__name__ in ['LogisticRegression', 'SVC', 'XGBClassifier']:
     y_pred_score = pipeline.predict_proba(X_test.to_pandas())[:, 1]
-    roc = roc_auc_score(y_val, y_pred_score)  # sample-based
-    fpr, tpr, thresholds = roc_curve(y_val, y_pred_score)  # sample-based
+    y_test = np.array(y_test, dtype=int)
+    roc = roc_auc_score(y_test, y_pred_score)  # sample-based
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_score)  # sample-based
 else:
     roc = np.nan
     fpr, tpr, thresholds = np.array([]), np.array([]), np.array([])

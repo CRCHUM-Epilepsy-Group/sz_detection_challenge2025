@@ -10,42 +10,36 @@ from sklearn.pipeline import Pipeline
 from feature_engine.selection import MRMR
 from sklearn.preprocessing import StandardScaler
 from szdetect import pull_features as pf
-# from szdetect import project_settings as s
+from szdetect import project_settings as s
 
 print('Imports successful')
 df = pf.pull_features(
-    feature_dir="./test_data/features_v4",
-    label_file="./test_data/labels.parquet",
+    feature_dir=s.FEATURES_DIR,
+    label_file=s.LABELS_FILE,
     feature_group="all",
-    # train_only=True,
-    num_eegs=3
-    )
-print('pull_features successful')
+    train_only=True,
+    num_eegs=2000
+)
 
 index_col = [
-    "timestamp",
     "dataset_name",
     "subject",
     "session",
     "run",
     "unique_id",
+    "timestamp",
+    "second",
     "label",
 ]
 
 feature_col = ["region_side", "freqs", "feature"]
 
-long_df = df.select(index_col + feature_col + ['value'])
-
-long_df = long_df.with_columns([
-    pl.col(column).fill_null('missing').alias(column) for column in feature_col
-])
+long_df = df.select(index_col + feature_col + ["value"])
 
 wide_df = long_df.pivot(
-    values='value', 
-    index=index_col, 
-    on=feature_col,
-    maintain_order=True
+    values="value", index=index_col, on=feature_col, maintain_order=True
 )
+
 print('pivot successful')
 
 print(f'Nbr datasets {len(wide_df.select(pl.col("dataset_name").unique()))}')
