@@ -1,10 +1,47 @@
 # An Efficient Pipeline for Seizure Detection on Scalp EEG Combining Multi-scale Features and Gradient Boosting
 
-Submission for the 2025 AI in Epilepsy Conference [Seizure Detection Challenge]((https://epilepsybenchmarks.com/challenge/)) from CRCHUM's Epilepsy Research Team, Montreal, Canada
+Submission for the 2025 AI in Epilepsy Conference [Seizure Detection Challenge](https://epilepsybenchmarks.com/challenge/) from CRCHUM's Epilepsy Research Team, Montreal, Canada
 
 ## Authors (alphabetic order)
 
 Elie Bou Assi, Daniel Galindo, Oumayma Gharbi, François Hardy, Amirhossein Jahani, Émile Lemoine, Isabel Sarzo Wabi
+
+## Docker Images
+
+The pretrained model can be found here: [Link to Docker images](https://github.com/orgs/CRCHUM-Epilepsy-Group/packages/container/package/sz_detect_crchum).
+
+### Instructions
+
+#### Prerequisites
+- Docker installed
+- Optimized for at least 50GB RAM and 10 CPU cores
+- EEG file in EDF format (BIDS-compliant naming)
+
+#### Installation
+
+``` sh
+docker pull ghcr.io/crchum-epilepsy-group/sz_detect_crchum:latest
+```
+#### Usage
+1. Run detection on a single file:
+
+``` sh
+docker run --rm \
+  -v /path/to/your/eeg:/data \
+  -e INPUT=/data/your_eeg.edf \
+  -e OUTPUT=/data/results.tsv \
+  ghcr.io/crchum-epilepsy-group/sz_detect_crchum:the-og
+```
+
+2. Expected output:
+- Results will be saved in TSV format ([HED-score compliant](https://hed-schemas.readthedocs.io/en/latest/hed_score_schema.html))
+- Processing time: ~5 minutes per hour of EEG
+
+#### Troubleshooting
+- Ensure EDF file follows BIDS naming convention
+- Check read/write permissions in mounted volumes
+- For memory issues, increase Docker's resource allocation
+
 
 ## Abstract
 
