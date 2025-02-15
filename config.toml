@@ -1,60 +1,60 @@
 
 [project]
-name = 'sz_detection_challenge'
+    name = 'sz_detection_challenge'
 
 [datasets]
-# Paths to BIDS datasets
-tuh_sz_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
-chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
-siena_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
+    # Paths to BIDS datasets
+    chb_mit_bids = "/mnt/data/SeizureDetectionChallenge2025/BIDS_CHB-MIT"
+    siena_bids   = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena"
+    tuh_sz_bids  = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure"
 
 [utilities]
-bids_db_files_dir = "data/temp/bids_db"
+    bids_db_files_dir = "data/temp/bids_db"
 
 [labels]
-labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
+    labels_file = "/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet"
 
 [features]
-features_config = "features_config.yaml"
-features_dir = "data/cleaned/inference/"
-num_workers = 10
-overwrite = false
-log_dir = "logs/inference"
+    features_config = "features_config.yaml"
+    features_dir    = "data/cleaned/inference/"
+    log_dir         = "logs/inference"
+    num_workers     = 10
+    overwrite       = false
 
 [preprocessing]
-# -1 will be converted to None
-read_edf.channels = -1 # Default to the 19 channels in 10-20 system
-filter_eeg.l_freq = 1
-filter_eeg.h_freq = 99
-filter_eeg.notch = -1
-segment_eeg.window_duration = 10
-segment_eeg.step_size = 4
+    # -1 will be converted to None
+    filter_eeg.h_freq           = 99
+    filter_eeg.l_freq           = 1
+    filter_eeg.notch            = -1
+    read_edf.channels           = -1 # Default to the 19 channels in 10-20 system
+    segment_eeg.step_size       = 4
+    segment_eeg.window_duration = 10
 
 [results]
-results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
-#results_dir = "temp/results"
+    results_dir = "/mnt/data/SeizureDetectionChallenge2025/data/results"
+    #results_dir = "temp/results"
 
 # Output for Inference pipeline
 [output]
-output_dir = "output"
+    output_dir = "output"
 
 [runtime]
-debug = false
-max_n_eeg = 4000
+    debug     = false
+    max_n_eeg = 4000
 
 [logs]
-log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
-#log_file = "temp/logs/test_ml_run.log"
+    log_file = "/mnt/data/SeizureDetectionChallenge2025/data/logs/test_ml_run.log"
+    #log_file = "temp/logs/test_ml_run.log"
 
 [model]
-pretrained_model_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/xgboost.pkl"
-pretrained_scaler_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/scaler.pkl"
-pretrained_mrmr_file = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/mrmr.pkl"
+    pretrained_model_file  = "./model/xgboost.pkl"
+    pretrained_mrmr_file   = "./model/mrmr.pkl"
+    pretrained_scaler_file = "./model/scaler.pkl"
 
 [firing_power]
-tau = 12
-threshold = 0.4
+    tau       = 12
+    threshold = 0.4
 
 [pipe]
-pipe_dir = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/"
-pipe_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"
+    pipe_dir  = "/mnt/data/SeizureDetectionChallenge2025/data/pretrained_pipe_steps/"
+    pipe_file = "/mnt/data/SeizureDetectionChallenge2025/data/results/ml_run_1/fold_0_pipeline_3_7.sav"

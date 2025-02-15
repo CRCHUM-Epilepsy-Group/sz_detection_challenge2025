@@ -1,2 +1,5 @@
+.dockerignore
 .venv/
 tests/
+Dockerfile
+compose.yml

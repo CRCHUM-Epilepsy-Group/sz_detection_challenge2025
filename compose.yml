@@ -1,18 +1,30 @@
 services:
   app:
+    # image: sz_detect_crchum:latest
+    # image: sz_detect_crchum:the-og
+    # image: sz_detect_crchum:new-kid
+    image: sz_detect_crchum:the-underdog
     build:
       context: .
+      args:
+        # the-og
+        # TAU: 12
+        # THRESHOLD: 0.4
+        # new-kid
+        # TAU: 15
+        # THRESHOLD: 0.55
+        # the-underdog
+        TAU: 18
+        THRESHOLD: 0.15
       ulimits:
         # fixes some issues when building
         nofile:
           soft: 10000
           hard: 10000
-    image: sz_detection:latest
     container_name: sz_CRCHUM
     environment:
-      # - INPUT=BIDS_tuh_eeg_seizure/sub-126/ses-05/eeg/sub-126_ses-05_task-szMonitoring_run-00_eeg.edf
-      - INPUT=BIDS_Siena/sub-12/ses-01/eeg/sub-12_ses-01_task-szMonitoring_run-01_eeg.edf
-      - OUTPUT=sub-12_ses-01_task-szMonitoring_run-01_eeg.tsv
+      - INPUT=BIDS_tuh_eeg_seizure/sub-277/ses-00/eeg/sub-277_ses-00_task-szMonitoring_run-01_eeg.edf
+      - OUTPUT=test.tsv
     volumes:
       # - /path/to/data:/data
       - /mnt/data/SeizureDetectionChallenge2025:/data
