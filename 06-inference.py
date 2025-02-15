@@ -47,6 +47,9 @@ def main():
     # Firing power
     tau = s.TAU
     threshold = s.THRESHOLD
+    if s.IN_DOCKER:
+        tau = os.environ.get("TAU", tau)
+        threshold = os.environ.get("THRESHOLD", threshold)
     df_fp = wide_df.sort(
         ["dataset_name", "subject", "session", "run", "second"]
     ).with_columns(
