@@ -61,8 +61,7 @@ def main():
     event_df = get_events_df(df_fp, s.PREPROCESSING_KWARGS["segment_eeg"]["step_size"])
 
     # Event predictions to TSV file with colomns onset, duration, evetType (sz) and dateTime
-    # in POSIX foramt %Y-%m-%d %H:%M:%S
-
+    # in POSIX format %Y-%m-%d %H:%M:%S
     if s.IN_DOCKER:
         output_file = Path(f"/output/{os.environ.get('OUTPUT')}")  # type: ignore
         OUTPUT_DIR = output_file.parent
@@ -70,10 +69,6 @@ def main():
     else:
         OUTPUT_DIR = s.OUTPUT_DIR
         output_file = None
-
-    # Clear output directory
-    # for file in OUTPUT_DIR.glob("*"):
-    #     file.unlink()
 
     write_predictions(event_df, OUTPUT_DIR, output_file=output_file)
     rprint(f"Predictions saved to file in ./{OUTPUT_DIR}")

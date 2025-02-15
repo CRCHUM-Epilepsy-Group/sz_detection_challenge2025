@@ -16,7 +16,7 @@ def main():
     if in_docker:
         edf_file = f"/data/{os.environ.get('INPUT')}"
     else:
-        edf_file = "/mnt/data/SeizureDetectionChallenge2025/BIDS_Siena/sub-09/ses-01/eeg/sub-09_ses-01_task-szMonitoring_run-01_eeg.edf"
+        edf_file = "/mnt/data/SeizureDetectionChallenge2025/BIDS_tuh_eeg_seizure/sub-277/ses-00/eeg/sub-277_ses-00_task-szMonitoring_run-01_eeg.edf"
     dataset_name = "test_set"
 
     eeg = pp.read_edf(edf_file, **s.PREPROCESSING_KWARGS["read_edf"])
