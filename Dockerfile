@@ -1,6 +1,8 @@
 FROM python:3.11 AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.5.29 /uv /uvx /bin/
 
+LABEL org.opencontainers.image.source=https://github.com/CRCHUM-Epilepsy-Group/sz_detection_challenge2025
+
 # Install cmake for epileptology further down
 RUN apt-get -y update \
     && apt-get install -y --no-install-recommends \
@@ -37,6 +39,10 @@ RUN --mount=type=bind,source=epileptology,target=/pkg/epileptology \
     uv pip install /pkg/epileptology
 
 FROM python:3.11
+
+ARG TAU
+ARG THRESHOLD
+
 WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:0.5.29 /uv /uvx /bin/
 COPY --from=builder /app/.venv/ /app/.venv/
@@ -53,6 +59,9 @@ VOLUME ["/output"]
 # Explicitely define environment variables
 ENV INPUT=""
 ENV OUTPUT=""
+
 ENV IN_DOCKER=1
+ENV TAU=${TAU}
+ENV THRESHOLD=${THRESHOLD}
 
 CMD ["uv", "run", "main.py"]
