@@ -18,6 +18,17 @@ def get_events_df(df, step_size: int):
         pl.col("fp_pred").diff().fill_null(0).abs().alias("group_start"),
         # Keep seconds for calculation
         pl.col("second").alias("second_orig"),
+        pl.col("timestamp")
+        .min()
+        .over(["dataset_name", "subject", "session", "run"])
+        .alias("dateTime"),
+        # Add a column with the duration of recording in seconds + step_size
+        (
+            pl.col("second").max().over(["dataset_name", "subject", "session", "run"])
+            + step_size
+        )
+        .cast(pl.Float64)
+        .alias("recordingDuration"),
     )
 
     # Create group IDs for consecutive predictions
@@ -26,26 +37,41 @@ def get_events_df(df, step_size: int):
     # Filter for groups with fp_pred=1 and aggregate
     events = (
         df.filter(pl.col("fp_pred") == 1)
-        .group_by(["dataset_name", "subject", "session", "run", "group_id"])
+        .group_by(
+            [
+                "dataset_name",
+                "subject",
+                "session",
+                "run",
+                "group_id",
+                "dateTime",
+                "recordingDuration",
+            ]
+        )
         .agg(
             onset=pl.col("second").min(),
             duration=pl.col("second").max()
             - pl.col("second").min()
             + step_size,  # assuming 4s epochs
-            dateTime=pl.col("timestamp").first(),
         )
         .drop("group_id")
     )
 
     # Add eventType column
-    events = events.with_columns(pl.lit("sz").alias("eventType"))
+    events = events.with_columns(
+        pl.lit("sz").alias("eventType"),
+    )
 
     # Handle cases with no events
     all_groups = df.select(["dataset_name", "subject", "session", "run"]).unique()
-    events = all_groups.join(
-        events, on=["dataset_name", "subject", "session", "run"], how="left"
-    ).with_columns(
-        pl.col("onset").cast(pl.Float64), pl.col("duration").cast(pl.Float64)
+    events = (
+        all_groups.join(
+            events, on=["dataset_name", "subject", "session", "run"], how="left"
+        )
+        .with_columns(
+            pl.col("onset").cast(pl.Float64), pl.col("duration").cast(pl.Float64)
+        )
+        .sort("dateTime")
     )
 
     return events
