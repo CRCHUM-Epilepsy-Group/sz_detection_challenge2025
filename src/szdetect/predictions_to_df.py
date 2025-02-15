@@ -42,10 +42,14 @@ def get_events_df(df, step_size: int):
 
     # Handle cases with no events
     all_groups = df.select(["dataset_name", "subject", "session", "run"]).unique()
-    events = all_groups.join(
-        events, on=["dataset_name", "subject", "session", "run"], how="left"
-    ).with_columns(
-        pl.col("onset").cast(pl.Float64), pl.col("duration").cast(pl.Float64)
+    events = (
+        all_groups.join(
+            events, on=["dataset_name", "subject", "session", "run"], how="left"
+        )
+        .with_columns(
+            pl.col("onset").cast(pl.Float64), pl.col("duration").cast(pl.Float64)
+        )
+        .sort("dateTime")
     )
 
     return events

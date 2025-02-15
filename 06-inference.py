@@ -6,6 +6,7 @@ from pathlib import Path
 from szdetect import pull_features as pf
 from szdetect.write_predictions import write_predictions
 from szdetect import project_settings as s
+from rich import print as rprint
 
 
 def main():
@@ -29,7 +30,7 @@ def main():
     wide_df = df.select(index_col + feature_col + ["value"]).pivot(
         values="value", index=index_col, on=feature_col, maintain_order=True
     )
-    print("long to wide pivot succeeded.")
+    rprint("Features loaded and pivoted ")
 
     model = pickle.load(open(s.MODEL_FILE, "rb"))
     scaler = pickle.load(open(s.SCALER_FILE, "rb"))
@@ -39,16 +40,18 @@ def main():
     X_test_fs = mrmr.transform(X_test.to_pandas())
     X_test_scaled = scaler.transform(X_test_fs)
     y_pred = model.predict(X_test_scaled)
+    rprint("Predictions computed")
 
     wide_df = wide_df.select(index_col).with_columns(pl.lit(y_pred).alias("y_pred"))
 
     # Firing power
     tau = s.TAU
     threshold = s.THRESHOLD
-    df_fp = wide_df.with_columns(
+    df_fp = wide_df.sort(
+        ["dataset_name", "subject", "session", "run", "second"]
+    ).with_columns(
         pl.col("y_pred")
         .over(["dataset_name", "subject", "session", "run"])
-        .sort_by("second")
         .map_batches(lambda x: firing_power_pl(x, tau, threshold))
         .alias("fp_pred")
     )
@@ -70,6 +73,7 @@ def main():
     #     file.unlink()
 
     write_predictions(event_df, OUTPUT_DIR, output_file=output_file)
+    rprint(f"Predictions saved to file in ./{OUTPUT_DIR}")
 
 
 if __name__ == "__main__":
