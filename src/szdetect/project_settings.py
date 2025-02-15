@@ -2,8 +2,6 @@
 import os
 from pathlib import Path
 
-import sys
-
 import epileptology.preprocessing as pp
 import tomllib
 from epileptology.features.featureextraction import FeatureExtractor
@@ -69,12 +67,13 @@ PIPE_FILE.parent.mkdir(parents=True, exist_ok=True)
 # Logs
 LOGS_FILE = Path(config["logs"]["log_file"])
 
-if "pytest" not in sys.modules:
-    BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
-    Path(LABELS_FILE).parent.mkdir(parents=True, exist_ok=True)
+if "PYTEST_CURRENT_TEST" not in os.environ:
+    if not IN_DOCKER:
+        BIDS_DB_FILES_DIR.mkdir(parents=True, exist_ok=True)
+        Path(LABELS_FILE).parent.mkdir(parents=True, exist_ok=True)
+        RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     FEATURES_DIR.mkdir(parents=True, exist_ok=True)
-    RESULTS_DIR.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
     LOGS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
