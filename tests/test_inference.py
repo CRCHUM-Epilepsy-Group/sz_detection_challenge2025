@@ -1,7 +1,7 @@
 import pickle
 import polars as pl
 import numpy as np
-
+from pathlib import Path
 from timescoring import scoring
 from timescoring import visualization
 from timescoring.annotations import Annotation
@@ -40,14 +40,13 @@ def firing_power(pre_input, tau=6):
             FPow = pre_input
     return FPow
 
-
+home_dir = "/mnt/data/SeizureDetectionChallenge2025/"
 df = pf.pull_features(
-    feature_dir="./test_data/features_v4",
-    label_file="/mnt/data/SeizureDetectionChallenge2025/output/labels.parquet",
-    # feature_dir=s.FEATURES_DIR,
-    # label_file=s.LABELS_FILE,
+    feature_dir=Path(home_dir+"data/cleaned/features_v4"),
+    label_file=home_dir+"output/labels.parquet",
     feature_group="all",
-    inference=True,
+    train_only=True,
+    # inference=True,
     num_eegs=10
 )
 
@@ -58,7 +57,8 @@ index_col = [
     "run",
     "unique_id",
     "timestamp",
-    "second"
+    "second",
+    "label",
 ]
 
 feature_col = ["region_side", "freqs", "feature"]
@@ -80,7 +80,8 @@ pretrained_pipeline = pickle.load(open(pipeline_file, "rb"))
 tolerance = 5 
 tau = 3
 threshold = 0.65
-
+step = 4
+f1_scores = []
 
 # TODO : optimize tau and threshold here 
 datasets = wide_df.select("dataset_name").unique().to_series().to_list()
@@ -103,14 +104,28 @@ for dataset in datasets:
     for record in records:
         print(record)
         df_record = df_dt.filter(pl.col("unique_id")==record)
+        y_true = np.array(df_record['label'], dtype=bool)
         X = df_record.drop(index_col)
         
         y_pred = pretrained_pipeline.predict(X.to_pandas())
         # firing power
-        y_pred = np.array(y_pred, dtype=int)
+        y_pred = np.array(y_pred, dtype=bool)
         y_pred_fp = firing_power(y_pred, tau=tau)
         y_pred_reg = np.array([1 if x >= threshold else 0 for x in y_pred_fp])
 
+        fs = 1 / step
+        ref = Annotation(y_true, fs)
+        hyp = Annotation(y_pred, fs)
+        ts_params = scoring.EventScoring.Parameters(
+            toleranceStart=30,
+            toleranceEnd=60,
+            minOverlap=0,
+            maxEventDuration=5 * 60,
+            minDurationBetweenEvents=90
+        )
+        ts_scores = scoring.EventScoring(ref, hyp, ts_params)
+        f1 = ts_scores.f1
+        f1_scores.append(f1)
         # store if df 
         """ 
         pred_indexes = np.array([i for i, x in enumerate(y_pred_reg) if x == 1])
